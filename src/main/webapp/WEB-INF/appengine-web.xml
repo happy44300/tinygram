@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<appengine-web-app xmlns="http://appengine.google.com/ns/1.0">
+
+  <threadsafe>false</threadsafe>
+  <sessions-enabled>true</sessions-enabled>
+  <runtime>java8</runtime>
+
+   <static-files>
+    <include path="/html/**.html" >
+    </include>
+    <include path="/js/**.js" >
+    </include>
+    
+  </static-files>
+  <system-properties>
+    <property name="java.util.logging.config.file" value="WEB-INF/logging.properties"/>
+  </system-properties>
+<!-- [START env_variables] -->
+    <env-variables>
+        <env-var name="ENDPOINTS_SERVICE_NAME" value="tinygram.appspot.com" />
+    </env-variables>
+    <!-- [END env_variables] -->
+</appengine-web-app>
