@@ -1,0 +1,38 @@
+runtime: java8
+inbound_services:
+- warmup
+derived_file_type:
+- java_precompiled
+auto_id_policy: default
+beta_settings:
+  'source_reference': 'https://github.com/happy44300/tinygram.git#2132930a40272fd0ba0629b79e04e49acc9c5001'
+env_variables:
+  'ENDPOINTS_SERVICE_NAME': 'tinygram.appspot.com'
+api_version: 'user_defined'
+handlers:
+- url: (/js/.*\.js)
+  static_files: __static__\1
+  upload: __NOT_USED__
+  require_matching_file: True
+  login: optional
+  secure: optional
+- url: (/html/.*\.html)
+  static_files: __static__\1
+  upload: __NOT_USED__
+  require_matching_file: True
+  login: optional
+  secure: optional
+- url: /
+  script: unused
+  login: optional
+  secure: optional
+- url: /.*/
+  script: unused
+  login: optional
+  secure: optional
+- url: /_ah/.*
+  script: unused
+  login: optional
+  secure: optional
+
+skip_files: app.yaml
