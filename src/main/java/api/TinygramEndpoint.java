@@ -39,7 +39,7 @@ public class TinygramEndpoint {
 		}
 		Entity postEntity = new Entity("Post", Long.MAX_VALUE-(new Date()).getTime()+":"+user.getEmail());
 		postEntity.setProperty("owner", user.getEmail());
-		postEntity.setProperty("url", post.url);
+		postEntity.setProperty("url", post.pictureUrl);
 		postEntity.setProperty("body", post.body);
 		postEntity.setProperty("likec", 0);
 		postEntity.setProperty("date", new Date());

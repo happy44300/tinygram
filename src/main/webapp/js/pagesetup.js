@@ -19,8 +19,68 @@ function handleCredentialResponse(response) {
     console.log("Email: " + responsePayload.email);
 
     console.log("Identified!");
+
+    User.set(responsePayload.sub, 
+        responsePayload.name,
+        responsePayload.given_name,
+        responsePayload.family_name, 
+        responsePayload.family_name, 
+        responsePayload.picture, 
+        responsePayload.email);
 }
 
+var User = {
+    ID: "",
+    FullName: "",
+    GivenName: "",
+    FamilyName: "",
+    ImageURL: "",
+    Email: "",
+
+    isLogged: false,
+
+    set: function(idParam, FullName, GivenName, FamilyName, ImageURL, Email){
+        User.isLogged = true;
+        User.ID = idParam;
+        User.FullName = FullName;
+        User.GivenName = GivenName;
+        User.FamilyName = FamilyName;
+        User.ImageURL = ImageURL;
+        User.Email = Email;
+
+        PromptView.enablePrompt();
+    }
+
+}
+
+function uploadPost() {
+
+}
+
+var PostController = {
+    uploadPost: function(owner, body, pictureUrl){
+
+        let payload = {
+            'owner': owner,
+            'body': body,
+            'pictureUrl': pictureUrl
+        }
+
+        let stringified = JSON.stringify(payload);
+        console.log(stringified);
+        console.log(encodeURIComponent(User.ID));
+        console.log(User.ID);
+
+        return m.request({
+            method: "POST",
+            url: "_ah/api/tinygram/v1/publishPost?access_token=" + encodeURIComponent(User.ID),
+            post: stringified
+        })
+        .then(function(result) {
+            console.log("Uplaoded Post!" + result);
+        })
+    }
+}
 
 var SettingsBar = {
     
@@ -41,11 +101,7 @@ var SettingsBarView = {
                 })    
             ]),
             m('a', {href: 'https://github.com/happy44300/tinygram/tree/main/src/main/webapp/html', class: 'col'}, 'TinyGram GitHub'),
-            m('ul', {class: ' '}, [
-                m('li', {class: ''}, 'Test1'),
-                m('li', {class: ''}, 'Test2')         
-            ])
-
+            //m('div', {class: 'col img-max'}, m("img",{class:"card-img-top rounded float-left mx-auto d-block mb-2 float-md-left mr-md-4 img-thumbnail",src:'https://pixabay.com/fr/images/download/instagram-1581266_640.jpg'}))
         ])
     }
 }
@@ -56,7 +112,7 @@ var Timeline = {
 
     addPost: function (imgUrl, bodyText) {
         this.posts.push(
-            m("div", {class:"card",style:"width: 18rem;"},[
+            m("div", {class:"card my-3",style:"width: 18rem;"},[
                 m("img",{class:"card-img-top",src:imgUrl}),
                 m("div", {class:"card-body"},
                     m("p",{class:"card-text"}, bodyText ),
@@ -109,14 +165,19 @@ var PromptView = {
                 disabled: PromptView.isPromptEnabled,
                 rows: 3,
                 oninput: function (e) {
-                Prompt.content=e.target.value
+                    Prompt.content=e.target.value
                 },
+            }),
+            m('button', {
+                onclick: function(e){
+                    PostController.uploadPost(User.Email, Prompt.content,"");
+                }
             })
         ])
     },
     enablePrompt: function(){
         PromptView.isPromptEnabled = false;
-        PromptView.redraw();
+        m.redraw();
     }
 }
 
