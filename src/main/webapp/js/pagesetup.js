@@ -28,7 +28,7 @@ var SettingsBar = {
 
 var SettingsBarView = {
     view: function() {
-        return m('div', {}, [
+        return m('div', {class: 'd-flex flex-wrap align-items-center justify-content-center justify-content-md-between py-3 mb-4 border-bottom border-top border-left'}, [
             m('div', {class: 'col'}, [
                 m('div',{
                     id: 'g_id_onload',
@@ -41,6 +41,10 @@ var SettingsBarView = {
                 })    
             ]),
             m('a', {href: 'https://github.com/happy44300/tinygram/tree/main/src/main/webapp/html', class: 'col'}, 'TinyGram GitHub'),
+            m('ul', {class: ' '}, [
+                m('li', {class: ''}, 'Test1'),
+                m('li', {class: ''}, 'Test2')         
+            ])
 
         ])
     }
@@ -96,20 +100,30 @@ var Prompt = {
 }
 
 var PromptView = {
+    isPromptEnabled: true,
     view: function(){
-        return m("input[type=text][placeholder=Write a new post]", {
-            value: Prompt.content,
-            oninput: function (e) {
-            Prompt.content=e.target.value
-            },
-        })
+
+        return m('div', {class: 'container mt-10'}, [
+            m("textarea[placeholder=Write a new post]", {
+                value: Prompt.content,
+                disabled: PromptView.isPromptEnabled,
+                rows: 3,
+                oninput: function (e) {
+                Prompt.content=e.target.value
+                },
+            })
+        ])
+    },
+    enablePrompt: function(){
+        PromptView.isPromptEnabled = false;
+        PromptView.redraw();
     }
 }
 
 var MainView = {
     view: function() {
         return m('div', {class: 'container text-center'}, [
-            m("div", {class: 'row'}, m(SettingsBarView)),
+            m("div", {class: 'row container'}, m(SettingsBarView)),
             m('div',{class: 'row'}, [
                 m("div", {class: 'col'}, m(PromptView)),
                 m("div", {class: 'col'}, m(TimelineView))
