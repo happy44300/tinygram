@@ -49,12 +49,24 @@ var SettingsBarView = {
 var Timeline = {
     posts: [],
     followedPosts: [],
+
+    addPost: function (imgUrl, bodyText) {
+        this.posts.push(
+            m("div", {class:"card",style:"width: 18rem;"},[
+                m("img",{class:"card-img-top",src:imgUrl}),
+                m("div", {class:"card-body"},
+                    m("p",{class:"card-text"}, bodyText ),
+                    m("a",{href:"#",class:"btn btn-primary"},"Like"))
+        ]));
+    },
+
     loadPosts: function(){
         console.log("hello");
         for(let i = 0; i < 5; i++){
-            Timeline.posts.push(m('div', {class: 'row'}, "this is post number" + i.toString()))
+            Timeline.addPost("https://cdn.pixabay.com/photo/2022/09/26/04/24/swan-7479623_960_720.jpg", `Goose ${i}`);
         }
     },
+    
     loadFollowedPosts: function() {
         
     },
