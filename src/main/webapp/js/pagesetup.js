@@ -20,7 +20,7 @@ function handleCredentialResponse(response) {
 
     console.log("Identified!");
 
-    User.set(responsePayload.sub, 
+    User.set(response.credential, 
         responsePayload.name,
         responsePayload.given_name,
         responsePayload.family_name, 
@@ -30,7 +30,7 @@ function handleCredentialResponse(response) {
 }
 
 var User = {
-    ID: "",
+    credential: "",
     FullName: "",
     GivenName: "",
     FamilyName: "",
@@ -39,9 +39,9 @@ var User = {
 
     isLogged: false,
 
-    set: function(idParam, FullName, GivenName, FamilyName, ImageURL, Email){
+    set: function(credential, FullName, GivenName, FamilyName, ImageURL, Email){
         User.isLogged = true;
-        User.ID = idParam;
+        User.credential = credential;
         User.FullName = FullName;
         User.GivenName = GivenName;
         User.FamilyName = FamilyName;
@@ -58,23 +58,18 @@ function uploadPost() {
 }
 
 var PostController = {
-    uploadPost: function(owner, body, pictureUrl){
+    uploadPost: function(body, pictureUrl){
 
-        let payload = {
-            'owner': owner,
+        let post = {
+            'owner': "",
             'body': body,
             'pictureUrl': pictureUrl
         }
 
-        let stringified = JSON.stringify(payload);
-        console.log(stringified);
-        console.log(encodeURIComponent(User.ID));
-        console.log(User.ID);
-
         return m.request({
             method: "POST",
-            url: "_ah/api/tinygram/v1/publishPost?access_token=" + encodeURIComponent(User.ID),
-            post: stringified
+            url: "_ah/api/tinygram/v1/publishPost?access_token=" + encodeURIComponent(User.credential),
+            params: post
         })
         .then(function(result) {
             console.log("Uplaoded Post!" + result);
@@ -170,7 +165,7 @@ var PromptView = {
             }),
             m('button', {
                 onclick: function(e){
-                    PostController.uploadPost(User.Email, Prompt.content,"");
+                    PostController.uploadPost(Prompt.content, "");
                 }
             })
         ])

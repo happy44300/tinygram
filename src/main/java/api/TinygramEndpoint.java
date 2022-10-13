@@ -7,6 +7,7 @@ import com.google.api.server.spi.config.ApiMethod.HttpMethod;
 import com.google.api.server.spi.response.UnauthorizedException;
 import dto.PostMessage;
 
+import java.security.InvalidParameterException;
 import java.util.Date;
 
 
@@ -37,6 +38,10 @@ public class TinygramEndpoint {
         if (user == null) {
 			throw INVALID_CREDENTIALS;
 		}
+        if(post.body == null && post.pictureUrl == null){
+            throw new InvalidParameterException("post body and picture are null");
+        }
+
 		Entity postEntity = new Entity("Post", Long.MAX_VALUE-(new Date()).getTime()+":"+user.getEmail());
 		postEntity.setProperty("owner", user.getEmail());
 		postEntity.setProperty("url", post.pictureUrl);
