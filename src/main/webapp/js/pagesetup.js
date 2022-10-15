@@ -118,7 +118,7 @@ const SettingsBarView = {
                     href: '#',
                     class: "navbar-brand"
                 }, m("img", {
-                    src:"https://raw.githubusercontent.com/happy44300/tinygram/9f4ca9056e731604a7b597940e39d1ad777b5aac/src/main/webapp/logo.png?token=GHSAT0AAAAAABYUHLPSNVAOTSLXH5I7W57CY2KRDBA",
+                    src:"static/logo.svg",
                     width:"230",height:"40"}
                 )),
                 m("div", {class:"navbar-brand"},[
@@ -144,7 +144,7 @@ const Timeline = {
     addPost: function (imgUrl, bodyText) {
         this.posts.push(
             m("div", {class: "card my-3 mx-auto", style: "width: 50%;"}, [
-                m("img", {class: "card-img-top", src: imgUrl}),
+                m("img", {class: "card-static_dir-top", src: imgUrl}),
                 m("div", {class: "card-body"},
                     m("p", {class: "card-text"}, bodyText),
                     m("a", {href: "#", class: "btn btn-danger w-100"}, "Like"))
