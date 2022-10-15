@@ -12,21 +12,27 @@ const PromptView = {
     isPromptEnabled: true,
     view: function(){
 
-        return m('div', {class: 'container mt-10'}, [
+        return m('div', {class: 'card my-3 mx-auto border-0', style:"width: 50%"},
+            m("label",{for:"postForm", class:"form-label"},[
             m("textarea[placeholder=Write a new post]", {
                 value: Prompt.content,
                 disabled: PromptView.isPromptEnabled,
+                class:"form-control",
                 rows: 3,
+                id:"postForm",
                 oninput: function (e) {
                     Prompt.content=e.target.value
                 },
             }),
             m('button', {
+                type:"submit",
+                class:"btn btn-block btn-primary w-100",
+                style:"auto",
                 onclick: function(e){
                     PostController.uploadPost(Prompt.content, "");
                 }
-            })
-        ])
+            },"Post")
+        ]))
     },
     enablePrompt: function(){
         PromptView.isPromptEnabled = false;
@@ -103,13 +109,10 @@ const PostController = {
     }
 };
 
-var SettingsBar = {
-    
-}
 
 const SettingsBarView = {
     view: function () {
-        return m('div', {class: 'navbar navbar-dark sticky-top bg-light'}, [
+        return m('nav', {class: 'navbar sticky-top navbar-light bg-light'}, [
             m('div', {class: 'container-fluid'}, [
                 m('a', {
                     href: '#',
@@ -140,11 +143,11 @@ const Timeline = {
 
     addPost: function (imgUrl, bodyText) {
         this.posts.push(
-            m("div", {class: "card my-3", style: "width: 18rem;"}, [
+            m("div", {class: "card my-3 mx-auto", style: "width: 50%;"}, [
                 m("img", {class: "card-img-top", src: imgUrl}),
                 m("div", {class: "card-body"},
                     m("p", {class: "card-text"}, bodyText),
-                    m("a", {href: "#", class: "btn btn-primary"}, "Like"))
+                    m("a", {href: "#", class: "btn btn-danger w-100"}, "Like"))
             ]));
     },
 
@@ -175,9 +178,7 @@ const Prompt = {
     addPictureToPost: function () {
 
     },
-    addVideoToPost: function () {
 
-    },
     sendPost: function () {
 
     }
@@ -186,11 +187,14 @@ const Prompt = {
 
 const MainView = {
     view: function () {
-        return m('div', {class: 'container text-center'}, [
-            m("div", {class: 'row container'}, m(SettingsBarView)),
-            m('div', {class: 'row'}, [
-                m("div", {class: 'col'}, m(PromptView)),
-                m("div", {class: 'col'}, m(TimelineView))
+        return m("div", {class: 'row align-items-start'},[
+        m(SettingsBarView),
+            m('div', {class: 'container text-center'}, [
+
+                m('div', {class: 'col'}, [
+                    m("div", {class: 'justify-content-center'}, m(PromptView)),
+                    m("div", {class: 'justify-content-center'}, m(TimelineView))
+                ])
             ])
         ])
     }
