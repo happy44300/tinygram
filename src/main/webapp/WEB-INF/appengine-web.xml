@@ -6,11 +6,10 @@
   <runtime>java8</runtime>
 
    <static-files>
-    <include path="/html/**.html" >
-    </include>
-    <include path="/js/**.js" >
-    </include>
-    
+    <include path="/html/**.html" ></include>
+    <include path="/js/**.js" ></include>
+    <include path="/static/**.png"></include>
+     <include path="/static/**.svg"></include>
   </static-files>
   <system-properties>
     <property name="java.util.logging.config.file" value="WEB-INF/logging.properties"/>
