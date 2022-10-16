@@ -5,6 +5,7 @@ import com.google.appengine.api.datastore.*;
 import com.google.appengine.api.users.User;
 import com.google.api.server.spi.config.ApiMethod.HttpMethod;
 import com.google.api.server.spi.response.UnauthorizedException;
+import com.google.appengine.api.datastore.Query.SortDirection;
 import dto.PostMessage;
 
 import java.security.InvalidParameterException;
@@ -25,12 +26,28 @@ public class TinygramEndpoint {
 	private static final UnauthorizedException INVALID_CREDENTIALS = new UnauthorizedException("Invalid credentials");
 	private static final DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
 
-	@ApiMethod(name = "ping", httpMethod = HttpMethod.GET)
-	public Object ping(User user) throws UnauthorizedException {
-        if (user == null) {
-			throw INVALID_CREDENTIALS;
-		}
-		return "Pong";
+	@ApiMethod(name = "GetPost", httpMethod = HttpMethod.GET)
+	public CollectionResponse<Entity> GetPost(User user,@Nullable @Named("next") String cursorString) throws UnauthorizedException {
+
+        Query query= new Query("Post").addSort("date", SortDirection.DESCENDING);
+
+        if (user != null) {
+        query.setFilter(new Query.FilterPredicate("owner", Query.FilterOperator.EQUAL, user.getUserId()));
+        }
+
+
+        PreparedQuery preparedQuery = datastore.prepare(query);
+
+        FetchOptions fetchOptions = FetchOptions.Builder.withLimit(1);
+
+        if (cursorString != null) {
+        fetchOptions.startCursor(Cursor.fromWebSafeString(cursorString));
+        }
+
+        QueryResultList<Entity> results = preparedQuery.asQueryResultList(fetchOptions);
+        cursorString = results.getCursor().toWebSafeString();
+
+        return CollectionResponse.<Entity>builder().setItems(results).setNextPageToken(cursorString).build();
 	}
 
     @ApiMethod(name = "publishPost", httpMethod = HttpMethod.POST)
@@ -42,10 +59,10 @@ public class TinygramEndpoint {
             throw new InvalidParameterException("post body and picture are null");
         }
 
-		Entity postEntity = new Entity("Post", Long.MAX_VALUE-(new Date()).getTime()+":"+user.getEmail());
-		postEntity.setProperty("owner", user.getEmail());
+		Entity postEntity = new Entity("Post",Long.MAX_VALUE-(new Date()).getTime()+":"+user.getEmail());
 		postEntity.setProperty("url", post.pictureUrl);
 		postEntity.setProperty("body", post.body);
+        postEntity.setProperty("owner", user.getEmail());
 		postEntity.setProperty("likec", 0);
 		postEntity.setProperty("date", new Date());
 
@@ -72,28 +89,6 @@ public class TinygramEndpoint {
 			throw INVALID_CREDENTIALS;
 		}
         //TODO: add body
-	}
-
-    @ApiMethod(name = "getPost", httpMethod = HttpMethod.GET)
-	public CollectionResponse<Entity> getPost(User user, @Nullable @Named("next") String cursorString ) throws UnauthorizedException {
-        if (user == null) {
-			throw INVALID_CREDENTIALS;
-		}
-		Query query = new Query("Post").
-				setFilter(new Query.FilterPredicate("owner", Query.FilterOperator.EQUAL, user.getEmail()));
-		PreparedQuery preparedQuery = datastore.prepare(query);
-
-		FetchOptions fetchOptions = FetchOptions.Builder.withLimit(2);
-
-		if (cursorString != null) {
-			fetchOptions.startCursor(Cursor.fromWebSafeString(cursorString));
-		}
-
-		QueryResultList<Entity> results = preparedQuery.asQueryResultList(fetchOptions);
-		cursorString = results.getCursor().toWebSafeString();
-
-		return CollectionResponse.<Entity>builder().setItems(results).setNextPageToken(cursorString).build();
-
 	}
 
 }

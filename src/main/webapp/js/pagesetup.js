@@ -12,33 +12,44 @@ const PromptView = {
     isPromptEnabled: true,
     view: function(){
 
-        return m('div', {class: 'card my-3 mx-auto border-0', style:"width: 50%"},
-            m("label",{for:"postForm", class:"form-label"},[
-            m("textarea[placeholder=Write a new post]", {
-                value: Prompt.content,
-                disabled: PromptView.isPromptEnabled,
-                class:"form-control",
-                rows: 3,
-                id:"postForm",
-                oninput: function (e) {
-                    Prompt.content=e.target.value
-                },
-            }),
+        return m('div', {class: 'form my-3 mx-auto border-0', style:"width: 50%"},[
+            m("div",{class:"form-group"},[
+                m("label",{for:"postUrl"},"Image Url"),
+                m("input",{
+                    class:"form-control", id:"postUrl", type:"url", placeholder:"Enter image url",
+                    value: Prompt.imageUrl,
+                    disabled: PromptView.isPromptEnabled,
+                    oninput: function (e) {
+                        Prompt.imageUrl=e.target.value
+                    }
+                }),
+                m("label",{for:"postForm"},"Post Title"),
+                m("textarea[placeholder=Write a new post]", {
+                    value: Prompt.title,
+                    disabled: PromptView.isPromptEnabled,
+                    class:"form-control",
+                    rows: 3,
+                    oninput: function (e) {
+                        Prompt.title=e.target.value
+                    }
+                }),
+            ]),
             m('button', {
                 type:"submit",
-                class:"btn btn-block btn-primary w-100",
+                class:"btn btn-block btn-primary",
                 style:"auto",
                 onclick: function(e){
-                    PostController.uploadPost(Prompt.content, "");
+                    PostController.uploadPost(Prompt.title, Prompt.imageUrl);
                 }
             },"Post")
-        ]))
+        ])
     },
     enablePrompt: function(){
         PromptView.isPromptEnabled = false;
         m.redraw();
     }
 };
+
 const User = {
     credential: "",
     FullName: "",
@@ -104,7 +115,8 @@ const PostController = {
             params: post
         })
             .then(function (result) {
-                console.log("Uploaded Post!" + result);
+                console.log("Uploaded Post!" + result.toString());
+                //Timeline.getDefaultPosts();
             })
     }
 };
@@ -140,6 +152,7 @@ const SettingsBarView = {
 const Timeline = {
     posts: [],
     followedPosts: [],
+    next: "",
 
     addPost: function (imgUrl, bodyText) {
         this.posts.push(
@@ -151,11 +164,26 @@ const Timeline = {
             ]));
     },
 
-    loadPosts: function () {
+    getDefaultPosts: function () {
         console.log("hello");
-        for (let i = 0; i < 5; i++) {
-            Timeline.addPost("https://cdn.pixabay.com/photo/2022/09/26/04/24/swan-7479623_960_720.jpg", `Goose ${i}`);
-        }
+        m.request({
+            method:"GET",
+            url:"_ah/api/tinygram/v1/GetPost",
+            params:{"next": Timeline.next}
+
+        }).then(function(result) {
+            console.log(result.toString())
+
+            if(result.hasOwnProperty("items")){
+                for(item of result.items){
+                    let entity = item.properties;
+                    Timeline.addPost(entity.url, entity.body);  
+                }
+            }
+            Timeline.next=result.nextPageToken;
+        })
+            
+
     },
 
     loadFollowedPosts: function () {
@@ -167,21 +195,24 @@ const Timeline = {
 };
 
 const TimelineView = {
-    oninit: Timeline.loadPosts,
+    oninit: Timeline.getDefaultPosts,
     view: function () {
-        return m('div', {class: 'timeline'}, Timeline.posts)
+        return m('div', {class: 'timeline'}, [Timeline.posts,
+            m('button', {
+                type:"submit",
+                class:"btn btn-block btn-primary",
+                style:"auto",
+                onclick: function(e){
+                   Timeline.getDefaultPosts();
+                }
+            },"Load more post")
+        ])
     }
 };
 
 const Prompt = {
-    content: '',
-    addPictureToPost: function () {
-
-    },
-
-    sendPost: function () {
-
-    }
+    title: '',
+    imageUrl:"",
 };
 
 
