@@ -85,11 +85,13 @@ public class TinygramEndpoint {
         //TODO: add body
 	}
 
-    @ApiMethod(name = "like", httpMethod = HttpMethod.POST)
-	public void like(User user, @Named("postid") String postid ) throws UnauthorizedException {
+    @ApiMethod(name = "likePost", httpMethod = HttpMethod.POST)
+	public void likePost(User user, @Named("postid") String postid ) throws UnauthorizedException {
         if (user == null) {
 			throw INVALID_CREDENTIALS;
 		}
+
+        System.out.println("you made it : " + postid);
 
         Thread th;
 

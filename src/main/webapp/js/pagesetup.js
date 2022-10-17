@@ -117,10 +117,11 @@ const PostController = {
             params: post
         })
         .then(function (result) {
-            console.log("Uploaded Post!" + result.toString());
+            console.log("Uploaded Post!");
+            console.log(result);
 
             //Updates the current timeline to show the post just uploaded
-            Timeline.addPost(result);
+            Timeline.addPost(result.properties, result.key.name);
         })
     }
 };
@@ -157,18 +158,25 @@ const Timeline = {
     posts: [],
     followedPosts: [],
     next: "",
-    addPost: function (post) {
+    addPost: function (post, postid) {
         this.posts.push( 
             m("div", {class: "card my-3 mx-auto", style: "width: 50%;"}, [
                 m("img", {class: "card-static_dir-top", src: post.url}),
                 m("div", {class: "card-body"},
                     m("p", {class: "card-text"}, post.body),
-                    m("a", {href: "#", class: "btn btn-danger w-100"}, "Like"),
+                    m("a", {href: "#", class: "btn btn-danger w-100", onclick: function(e){
+
+                        //FOR THE LOVE OF GOD I CANT MAKE THIS REQUEST WORK
+                        m.request({
+                            method: "POST",
+                            url: "_ah/api/tinygram/v1/likePost?access_token=" + encodeURIComponent(User.credential),
+                            params:{'postid': encodeURIComponent(postid)}
+                        });
+                    }}, "Like"),
                     m("div",{class: ""}, post.likec))
             ])
         );
     },
-
     getDefaultPosts: function () {
         console.log("hello");
         m.request({
@@ -177,12 +185,20 @@ const Timeline = {
             params:{"next": Timeline.next}
 
         }).then(function(result) {
-            console.log(result.toString())
+            console.log(result)
 
             if(result.hasOwnProperty("items")){
                 for(item of result.items){
+                    console.log("item from get! :" + item);
+                    console.log("item from get, to string()! :" + JSON.stringify(item));
                     let entity = item.properties;
-                    Timeline.addPost(entity);  
+                    //Timeline.addPost(entity);
+
+                    console.log("entity from get! :" + entity);
+                    console.log("entity from get, to string()! :" + JSON.stringify(entity));
+
+                    console.log("url?" + entity.url);
+                    Timeline.addPost(entity, item.key.name);  
                 }
             }
             Timeline.next=result.nextPageToken;
