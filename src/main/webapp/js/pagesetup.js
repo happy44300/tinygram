@@ -169,8 +169,8 @@ const Timeline = {
                         //FOR THE LOVE OF GOD I CANT MAKE THIS REQUEST WORK
                         m.request({
                             method: "POST",
-                            url: "_ah/api/tinygram/v1/likePost?access_token=" + encodeURIComponent(User.credential),
-                            params:{'postid': encodeURIComponent(postid)}
+                            url: "_ah/api/tinygram/v1/likePost/" + encodeURIComponent(postid) + "?access_token=" + encodeURIComponent(User.credential),
+                            //params:{'postid': }
                         });
                     }}, "Like"),
                     m("div",{class: ""}, post.likec))
