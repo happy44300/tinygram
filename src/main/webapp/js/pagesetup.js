@@ -9,7 +9,7 @@ function parseJwt (token) {
 }
 
 const PromptView = {
-    isPromptEnabled: true,
+    isPromptDisabled: true,
     view: function(){
 
         return m('div', {class: 'form my-3 mx-auto border-0', style:"width: 50%"},[
@@ -18,7 +18,7 @@ const PromptView = {
                 m("input",{
                     class:"form-control", id:"postUrl", type:"url", placeholder:"Enter image url",
                     value: Prompt.imageUrl,
-                    disabled: PromptView.isPromptEnabled,
+                    disabled: PromptView.isPromptDisabled,
                     oninput: function (e) {
                         Prompt.imageUrl=e.target.value
                     }
@@ -26,7 +26,7 @@ const PromptView = {
                 m("label",{for:"postForm"},"Post Title"),
                 m("textarea[placeholder=Write a new post]", {
                     value: Prompt.title,
-                    disabled: PromptView.isPromptEnabled,
+                    disabled: PromptView.isPromptDisabled,
                     class:"form-control",
                     rows: 3,
                     oninput: function (e) {
@@ -40,12 +40,18 @@ const PromptView = {
                 style:"auto",
                 onclick: function(e){
                     PostController.uploadPost(Prompt.title, Prompt.imageUrl);
+
+                    //TODO: Empty prompt once post is uploaded
                 }
             },"Post")
         ])
     },
     enablePrompt: function(){
-        PromptView.isPromptEnabled = false;
+        PromptView.isPromptDisabled = false;
+        m.redraw();
+    },
+    disablePrompt: function(){
+        PromptView.isPromptDisabled = true;
         m.redraw();
     }
 };
@@ -96,10 +102,6 @@ function handleCredentialResponse(response) {
 }
 
 
-function uploadPost() {
-
-}
-
 const PostController = {
     uploadPost: function (body, pictureUrl) {
 
@@ -114,10 +116,12 @@ const PostController = {
             url: "_ah/api/tinygram/v1/publishPost?access_token=" + encodeURIComponent(User.credential),
             params: post
         })
-            .then(function (result) {
-                console.log("Uploaded Post!" + result.toString());
-                //Timeline.getDefaultPosts();
-            })
+        .then(function (result) {
+            console.log("Uploaded Post!" + result.toString());
+
+            //Updates the current timeline to show the post just uploaded
+            Timeline.addPost(result);
+        })
     }
 };
 
@@ -153,15 +157,16 @@ const Timeline = {
     posts: [],
     followedPosts: [],
     next: "",
-
-    addPost: function (imgUrl, bodyText) {
-        this.posts.push(
+    addPost: function (post) {
+        this.posts.push( 
             m("div", {class: "card my-3 mx-auto", style: "width: 50%;"}, [
-                m("img", {class: "card-static_dir-top", src: imgUrl}),
+                m("img", {class: "card-static_dir-top", src: post.url}),
                 m("div", {class: "card-body"},
-                    m("p", {class: "card-text"}, bodyText),
-                    m("a", {href: "#", class: "btn btn-danger w-100"}, "Like"))
-            ]));
+                    m("p", {class: "card-text"}, post.body),
+                    m("a", {href: "#", class: "btn btn-danger w-100"}, "Like"),
+                    m("div",{class: ""}, post.likec))
+            ])
+        );
     },
 
     getDefaultPosts: function () {
@@ -177,7 +182,7 @@ const Timeline = {
             if(result.hasOwnProperty("items")){
                 for(item of result.items){
                     let entity = item.properties;
-                    Timeline.addPost(entity.url, entity.body);  
+                    Timeline.addPost(entity);  
                 }
             }
             Timeline.next=result.nextPageToken;

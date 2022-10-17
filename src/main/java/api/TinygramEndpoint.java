@@ -1,6 +1,7 @@
 package api;
 import com.google.api.server.spi.config.*;
 import com.google.api.server.spi.response.CollectionResponse;
+import com.google.appengine.api.ThreadManager;
 import com.google.appengine.api.datastore.*;
 import com.google.appengine.api.users.User;
 import com.google.api.server.spi.config.ApiMethod.HttpMethod;
@@ -10,6 +11,7 @@ import dto.PostMessage;
 
 import java.security.InvalidParameterException;
 import java.util.Date;
+import java.util.Random;
 
 
 @Api(name = "tinygram",
@@ -29,10 +31,10 @@ public class TinygramEndpoint {
 	@ApiMethod(name = "GetPost", httpMethod = HttpMethod.GET)
 	public CollectionResponse<Entity> GetPost(User user,@Nullable @Named("next") String cursorString) throws UnauthorizedException {
 
-        Query query= new Query("Post").addSort("date", SortDirection.DESCENDING);
+        Query query = new Query("Post").addSort("date", SortDirection.DESCENDING);
 
         if (user != null) {
-        query.setFilter(new Query.FilterPredicate("owner", Query.FilterOperator.EQUAL, user.getUserId()));
+            query.setFilter(new Query.FilterPredicate("owner", Query.FilterOperator.EQUAL, user.getUserId()));
         }
 
 
@@ -88,7 +90,46 @@ public class TinygramEndpoint {
         if (user == null) {
 			throw INVALID_CREDENTIALS;
 		}
-        //TODO: add body
+
+        Thread th;
+
+        th = ThreadManager.createThreadForCurrentRequest(new Runnable() {
+            public void run(){
+                Transaction transaction = datastore.beginTransaction();
+
+                try{
+
+                    //STEP 1 : Access the post
+                    Key postKey = KeyFactory.stringToKey(postid);
+                    Entity post = datastore.get(postKey);
+
+                    //STEP 2 : Increase the likes counter of the post
+                    int currentLikesCount = (int) post.getProperty("likec");
+                    post.setProperty("likec", currentLikesCount+1);
+
+                    //STEP 3 : Close the transaction
+                    datastore.put(post);
+                    transaction.commit();
+
+                }catch(Exception e){
+                    e.printStackTrace();
+                }finally {
+                    if(transaction.isActive()){
+                        transaction.rollback();
+                    }
+                }
+            }
+        });
+
+        th.start();
+
+        try {
+            //Unsure about the way to use this
+            th.join();
+        } catch (Exception e) {
+            //TODO: handle exception
+        }
+        
 	}
 
 }
