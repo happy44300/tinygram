@@ -10,6 +10,7 @@ import com.google.appengine.api.datastore.Query.SortDirection;
 import dto.PostMessage;
 
 import java.security.InvalidParameterException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Random;
 
@@ -53,7 +54,7 @@ public class TinygramEndpoint {
 	}
 
     @ApiMethod(name = "publishPost", httpMethod = HttpMethod.POST)
-	public Entity  publishPost(User user, PostMessage post) throws UnauthorizedException {
+	public Entity publishPost(User user, PostMessage post) throws UnauthorizedException {
         if (user == null) {
 			throw INVALID_CREDENTIALS;
 		}
@@ -67,6 +68,14 @@ public class TinygramEndpoint {
         postEntity.setProperty("owner", user.getEmail());
 		postEntity.setProperty("likec", 0);
 		postEntity.setProperty("date", new Date());
+
+
+        ArrayList<String> likeaccounts = new ArrayList<String>();
+        
+        //IDK why this is needed but if i don't write it then likeaccounts is considered null
+        likeaccounts.add("");
+        
+        postEntity.setProperty("likeaccounts", likeaccounts);
 
 		System.out.println("Yeah:"+ post);
 
@@ -86,52 +95,48 @@ public class TinygramEndpoint {
 	}
 
     @ApiMethod(name = "likePost", httpMethod = HttpMethod.POST)
-	public void likePost(User user, @Named("postid") String postid ) throws UnauthorizedException {
+	public Object likePost(User user, @Named("postid") String postid ) throws UnauthorizedException {
         if (user == null) {
 			throw INVALID_CREDENTIALS;
 		}
 
+        Long likes = null;
+
         System.out.println("you made it : " + postid);
 
-        Thread th;
+        Transaction transaction = datastore.beginTransaction();
 
-        th = ThreadManager.createThreadForCurrentRequest(new Runnable() {
-            public void run(){
-                Transaction transaction = datastore.beginTransaction();
+        try{
 
-                try{
+            Key postKey = KeyFactory.createKey("Post", postid);
+            Entity post = datastore.get(postKey);
 
-                    //STEP 1 : Access the post
-                    Key postKey = KeyFactory.stringToKey(postid);
-                    Entity post = datastore.get(postKey);
+            ArrayList<String> usersWhoLiked = (ArrayList<String>) post.getProperty("likeaccounts");
 
-                    //STEP 2 : Increase the likes counter of the post
-                    int currentLikesCount = (int) post.getProperty("likec");
-                    post.setProperty("likec", currentLikesCount+1);
+            Long currentLikesCount = (Long) post.getProperty("likec");
 
-                    //STEP 3 : Close the transaction
-                    datastore.put(post);
-                    transaction.commit();
+            likes = currentLikesCount;
+    
+            if(!usersWhoLiked.contains(user.toString())){
+                
+                post.setProperty("likec", currentLikesCount+1);
+                likes = likes + 1;
+                usersWhoLiked.add(user.toString());
 
-                }catch(Exception e){
-                    e.printStackTrace();
-                }finally {
-                    if(transaction.isActive()){
-                        transaction.rollback();
-                    }
-                }
             }
-        });
 
-        th.start();
+            datastore.put(post);
+            transaction.commit();
 
-        try {
-            //Unsure about the way to use this
-            th.join();
-        } catch (Exception e) {
-            //TODO: handle exception
+        }catch(Exception e){
+            e.printStackTrace();
+        }finally {
+            if(transaction.isActive()){
+                transaction.rollback();
+            }
         }
         
+        return likes;
 	}
 
 }

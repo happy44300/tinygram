@@ -171,9 +171,13 @@ const Timeline = {
                             method: "POST",
                             url: "_ah/api/tinygram/v1/likePost/" + encodeURIComponent(postid) + "?access_token=" + encodeURIComponent(User.credential),
                             //params:{'postid': }
+                        })
+                        .then(function(result){
+                            console.log("number of likes" + result)
+                            document.getElementById(postid).innerHTML = result;
                         });
                     }}, "Like"),
-                    m("div",{class: ""}, post.likec))
+                    m("div",{class: "", id:postid}, post.likec))
             ])
         );
     },
