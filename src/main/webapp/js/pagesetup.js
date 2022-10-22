@@ -8,54 +8,6 @@ function parseJwt (token) {
     return JSON.parse(jsonPayload);
 }
 
-const PromptView = {
-    isPromptDisabled: true,
-    view: function(){
-
-        return m('div', {class: 'form my-3 mx-auto border-0', style:"width: 50%"},[
-            m("div",{class:"form-group"},[
-                m("label",{for:"postUrl"},"Image Url"),
-                m("input",{
-                    class:"form-control", id:"postUrl", type:"url", placeholder:"Enter image url",
-                    value: Prompt.imageUrl,
-                    disabled: PromptView.isPromptDisabled,
-                    oninput: function (e) {
-                        Prompt.imageUrl=e.target.value
-                    }
-                }),
-                m("label",{for:"postForm"},"Post Title"),
-                m("textarea[placeholder=Write a new post]", {
-                    value: Prompt.title,
-                    disabled: PromptView.isPromptDisabled,
-                    class:"form-control",
-                    rows: 3,
-                    oninput: function (e) {
-                        Prompt.title=e.target.value
-                    }
-                }),
-            ]),
-            m('button', {
-                type:"submit",
-                class:"btn btn-block btn-primary",
-                style:"auto",
-                onclick: function(e){
-                    PostController.uploadPost(Prompt.title, Prompt.imageUrl);
-
-                    //TODO: Empty prompt once post is uploaded
-                }
-            },"Post")
-        ])
-    },
-    enablePrompt: function(){
-        PromptView.isPromptDisabled = false;
-        m.redraw();
-    },
-    disablePrompt: function(){
-        PromptView.isPromptDisabled = true;
-        m.redraw();
-    }
-};
-
 const User = {
     credential: "",
     FullName: "",
@@ -92,14 +44,82 @@ function handleCredentialResponse(response) {
 
     console.log("Identified!");
 
-    User.set(response.credential, 
+    User.set(response.credential,
         responsePayload.name,
         responsePayload.given_name,
-        responsePayload.family_name, 
-        responsePayload.family_name, 
-        responsePayload.picture, 
+        responsePayload.family_name,
+        responsePayload.family_name,
+        responsePayload.picture,
         responsePayload.email);
 }
+
+
+const PromptView = {
+    isPromptDisabled: true,
+    view: function(){
+
+        return m('div', {class: 'form my-3 mx-auto border-0', style:"width: 50%"},[
+
+            m("button", {
+                "class":"btn btn-secondary",
+                "id":"option1",
+                "checked":"checked",
+                onclick: function (e) {
+                    Timeline.clear();
+                    Timeline.getDefaultPosts()
+                }},"Display All"),
+
+            m("button", {
+                "class":"btn btn-secondary",
+                "id":"option2",
+                onclick: function (e) {
+                    Timeline.clear();
+                    Timeline.loadFollowedPosts();
+                }}, "Display followed"),
+
+            m("div",{class:"form-group"},[
+                m("label",{for:"postUrl"},"Image Url"),
+                m("input",{
+                    class:"form-control", id:"postUrl", type:"url", placeholder:"Enter image url",
+                    value: Prompt.imageUrl,
+                    disabled: PromptView.isPromptDisabled,
+                    oninput: function (e) {
+                        Prompt.imageUrl=e.target.value
+                    }
+                }),
+                m("label",{for:"postForm"},"Post Title"),
+                m("textarea[placeholder=Write a new post]", {
+                    value: Prompt.title,
+                    disabled: PromptView.isPromptDisabled,
+                    class:"form-control",
+                    rows: 3,
+                    oninput: function (e) {
+                        Prompt.title=e.target.value
+                    }
+                }),
+            ]),
+            m('button', {
+                type:"submit",
+                class:"btn btn-block btn-primary mx-auto ",
+                style:"text-center",
+                onclick: function(e){
+                    PostController.uploadPost(Prompt.title, Prompt.imageUrl);
+
+                    //TODO: Empty prompt once post is uploaded
+                }
+            },"Post")
+        ])
+    },
+    enablePrompt: function(){
+        PromptView.isPromptDisabled = false;
+        m.redraw();
+    },
+    disablePrompt: function(){
+        PromptView.isPromptDisabled = true;
+        m.redraw();
+    }
+};
+
 
 
 const PostController = {
@@ -182,7 +202,7 @@ const Timeline = {
         );
     },
     getDefaultPosts: function () {
-        console.log("hello");
+
         m.request({
             method:"GET",
             url:"_ah/api/tinygram/v1/GetPost",
@@ -191,12 +211,15 @@ const Timeline = {
         }).then(function(result) {
             console.log(result)
 
+            if(result == null){
+                return;
+            }
+
             if(result.hasOwnProperty("items")){
-                for(item of result.items){
+                for(let item of result.items){
                     console.log("item from get! :" + item);
                     console.log("item from get, to string()! :" + JSON.stringify(item));
                     let entity = item.properties;
-                    //Timeline.addPost(entity);
 
                     console.log("entity from get! :" + entity);
                     console.log("entity from get, to string()! :" + JSON.stringify(entity));
@@ -207,25 +230,28 @@ const Timeline = {
             }
             Timeline.next=result.nextPageToken;
         })
-            
+    },
+
+    clear: function () {
+        Timeline.posts.forEach(div => div.parentNode.removeChild(div));
+        Timeline.posts = [];
+        Timeline.next = "";
+        m.redraw()
 
     },
 
     loadFollowedPosts: function () {
-
-    },
-    displayPost: function () {
-
+        //TODO: implement
     },
 };
 
 const TimelineView = {
     oninit: Timeline.getDefaultPosts,
     view: function () {
-        return m('div', {class: 'timeline'}, [Timeline.posts,
+        return m('div', {class: 'text-center'}, [Timeline.posts,
             m('button', {
                 type:"submit",
-                class:"btn btn-block btn-primary",
+                class:"btn btn-block btn-primary mx-auto",
                 style:"auto",
                 onclick: function(e){
                    Timeline.getDefaultPosts();
@@ -245,15 +271,26 @@ const MainView = {
     view: function () {
         return m("div", {class: 'row align-items-start'},[
         m(SettingsBarView),
-            m('div', {class: 'container text-center'}, [
+            m('div', {class: 'container'}, [
 
                 m('div', {class: 'col'}, [
-                    m("div", {class: 'justify-content-center'}, m(PromptView)),
-                    m("div", {class: 'justify-content-center'}, m(TimelineView))
+                    m("div", {class: ''}, m(PromptView)),
+                    m("div", {class: ''}, m(TimelineView))
                 ])
             ])
         ])
     }
 };
 
-m.mount(document.body, MainView)	
+m.mount(document.body, MainView);
+
+//Add event Listener
+// const select = document.getElementById('options_display');
+// select.addEventListener('click', ({ target }) => { // handler fires on root container click
+//     alert("a")
+//     if (target.getAttribute('name') === 'options_display_all') { // check if user clicks right element
+//         alert('Filter by bing: ' + target.value);
+//     }else if (target.getAttribute('name') === "options_display_followed"){
+//         alert('Filter by bong: ' + target.value);
+//     }
+// });
