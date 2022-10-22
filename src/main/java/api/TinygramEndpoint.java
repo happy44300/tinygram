@@ -12,6 +12,7 @@ import dto.PostMessage;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.Random;
 
 
@@ -30,13 +31,9 @@ public class TinygramEndpoint {
 	private static final DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
 
 	@ApiMethod(name = "GetPost", httpMethod = HttpMethod.GET)
-	public CollectionResponse<Entity> GetPost(User user,@Nullable @Named("next") String cursorString) throws UnauthorizedException {
+	public CollectionResponse<Entity> GetPost(@Nullable @Named("next") String cursorString) throws UnauthorizedException {
 
         Query query = new Query("Post").addSort("date", SortDirection.DESCENDING);
-
-        if (user != null) {
-            query.setFilter(new Query.FilterPredicate("owner", Query.FilterOperator.EQUAL, user.getUserId()));
-        }
 
 
         PreparedQuery preparedQuery = datastore.prepare(query);
@@ -70,7 +67,7 @@ public class TinygramEndpoint {
 		postEntity.setProperty("date", new Date());
 
 
-        ArrayList<String> likeaccounts = new ArrayList<String>();
+        HashSet<String> likeaccounts = new HashSet<String>();
         
         //IDK why this is needed but if i don't write it then likeaccounts is considered null
         likeaccounts.add("");
@@ -88,10 +85,35 @@ public class TinygramEndpoint {
 
     @ApiMethod(name = "follow", httpMethod = HttpMethod.POST)
 	public void follow(User user, @Named("userToFollow") String userToFollow ) throws UnauthorizedException {
+        //TODO: make shit work
         if (user == null) {
 			throw INVALID_CREDENTIALS;
 		}
-        //TODO: add body
+
+        System.out.println("you made it : " + userToFollow);
+
+        Transaction transaction = datastore.beginTransaction();
+
+        try{
+
+            Key postKey = KeyFactory.createKey("Follow", user.getEmail());
+            Entity followerEntity = datastore.get(postKey);
+
+
+            HashSet<String> followers = (HashSet<String>) followerEntity.getProperty("follower");
+    
+            
+
+            datastore.put(followerEntity);
+            transaction.commit();
+
+        }catch(Exception e){
+            e.printStackTrace();
+        }finally {
+            if(transaction.isActive()){
+                transaction.rollback();
+            }
+        }
 	}
 
     @ApiMethod(name = "likePost", httpMethod = HttpMethod.POST)
@@ -111,7 +133,8 @@ public class TinygramEndpoint {
             Key postKey = KeyFactory.createKey("Post", postid);
             Entity post = datastore.get(postKey);
 
-            ArrayList<String> usersWhoLiked = (ArrayList<String>) post.getProperty("likeaccounts");
+
+            HashSet<String> usersWhoLiked = (HashSet<String>) post.getProperty("likeaccounts");
 
             Long currentLikesCount = (Long) post.getProperty("likec");
 

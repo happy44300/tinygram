@@ -164,7 +164,7 @@ const Timeline = {
                 m("img", {class: "card-static_dir-top", src: post.url}),
                 m("div", {class: "card-body"},
                     m("p", {class: "card-text"}, post.body),
-                    m("a", {href: "#", class: "btn btn-danger w-100", onclick: function(e){
+                    m("a", {href: "", class: "btn btn-danger w-100", onclick: function(e){
 
                         //FOR THE LOVE OF GOD I CANT MAKE THIS REQUEST WORK
                         m.request({
