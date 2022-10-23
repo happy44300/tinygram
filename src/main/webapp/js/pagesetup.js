@@ -180,7 +180,7 @@ const Timeline = {
     next: "",
     addPost: function (post, postid) {
         this.posts.push( 
-            m("div", {class: "card my-3 mx-auto", style: "width: 50%;"}, [
+            m("div", {class: "card my-3 mx-auto", id:"post", style: "width: 50%;"}, [
                 m("img", {class: "card-static_dir-top", src: post.url}),
                 m("div", {class: "card-body"},
                     m("p", {class: "card-text"}, post.body),
@@ -233,11 +233,9 @@ const Timeline = {
     },
 
     clear: function () {
-        Timeline.posts.forEach(div => div.parentNode.removeChild(div));
         Timeline.posts = [];
         Timeline.next = "";
         m.redraw()
-
     },
 
     loadFollowedPosts: function () {
@@ -283,14 +281,3 @@ const MainView = {
 };
 
 m.mount(document.body, MainView);
-
-//Add event Listener
-// const select = document.getElementById('options_display');
-// select.addEventListener('click', ({ target }) => { // handler fires on root container click
-//     alert("a")
-//     if (target.getAttribute('name') === 'options_display_all') { // check if user clicks right element
-//         alert('Filter by bing: ' + target.value);
-//     }else if (target.getAttribute('name') === "options_display_followed"){
-//         alert('Filter by bong: ' + target.value);
-//     }
-// });
