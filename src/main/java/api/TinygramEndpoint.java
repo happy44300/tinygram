@@ -6,6 +6,8 @@ import com.google.appengine.api.datastore.*;
 import com.google.appengine.api.users.User;
 import com.google.api.server.spi.config.ApiMethod.HttpMethod;
 import com.google.api.server.spi.response.UnauthorizedException;
+import com.google.appengine.api.datastore.Query.FilterOperator;
+import com.google.appengine.api.datastore.Query.FilterPredicate;
 import com.google.appengine.api.datastore.Query.SortDirection;
 import dto.PostMessage;
 
@@ -29,6 +31,9 @@ public class TinygramEndpoint {
 
 	private static final UnauthorizedException INVALID_CREDENTIALS = new UnauthorizedException("Invalid credentials");
 	private static final DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
+    private static final Random rng = new Random();
+
+    private static final int FOLLOWER_SHARD_NUMBER = 2;
 
 	@ApiMethod(name = "GetPost", httpMethod = HttpMethod.GET)
 	public CollectionResponse<Entity> GetPost(@Nullable @Named("next") String cursorString) throws UnauthorizedException {
@@ -49,6 +54,67 @@ public class TinygramEndpoint {
 
         return CollectionResponse.<Entity>builder().setItems(results).setNextPageToken(cursorString).build();
 	}
+
+    @ApiMethod(name = "register", httpMethod = HttpMethod.POST)
+    public Boolean register(User user) throws UnauthorizedException{
+        //Create user entity so that other user can start following
+        if (user == null) {
+			throw INVALID_CREDENTIALS;
+		}
+
+        Key key = KeyFactory.createKey("User", user.getEmail()+":"+"user");
+
+
+        try {
+            datastore.get(key);
+            return false;
+        } catch (EntityNotFoundException e) {
+            createUserEntity(user);
+            return true;
+        }
+
+    }
+
+    private static void createUserEntity(User user){
+         //Hotspot can occur if users have close email
+         Entity userEntity = new Entity("User",user.getEmail()+":"+"user");
+
+         userEntity.setProperty("owner", user.getEmail());
+         userEntity.setProperty("followerShardAmount", FOLLOWER_SHARD_NUMBER);
+ 
+         Transaction txn = datastore.beginTransaction();
+ 
+         try {
+   
+             datastore.put(userEntity);
+             txn.commit();
+         }catch(Exception e){
+             e.printStackTrace();
+         }finally {
+             if(txn.isActive()){
+                 txn.rollback();
+             }
+         }
+ 
+         Transaction transaction = datastore.beginTransaction();
+         try {
+             for (int i = 0; i < FOLLOWER_SHARD_NUMBER; i++) { 
+                 Entity shard = new Entity("followerShard",user.getEmail()+":"+"shard_"+ i);
+                 HashSet<String> followerAccount = new HashSet<String>();
+                 followerAccount.add("");
+                 shard.setProperty("shardedFollowerList", followerAccount);
+                 datastore.put(shard);
+             }
+             transaction.commit();
+         }catch(Exception e){
+             e.printStackTrace();
+         }finally {
+             if(transaction.isActive()){
+                 transaction.rollback();
+             }
+         }
+ 
+    }
 
     @ApiMethod(name = "publishPost", httpMethod = HttpMethod.POST)
 	public Entity publishPost(User user, PostMessage post) throws UnauthorizedException {
@@ -84,37 +150,71 @@ public class TinygramEndpoint {
 	}
 
     @ApiMethod(name = "follow", httpMethod = HttpMethod.POST)
-	public void follow(User user, @Named("userToFollow") String userToFollow ) throws UnauthorizedException {
-        //TODO: make shit work
+	public void follow(User user, @Named("userToFollow") String userToFollowEmail ) throws UnauthorizedException {
         if (user == null) {
 			throw INVALID_CREDENTIALS;
 		}
 
-        System.out.println("you made it : " + userToFollow);
-
-        Transaction transaction = datastore.beginTransaction();
+        System.out.println("you made it : " + userToFollowEmail);
 
         try{
 
-            Key postKey = KeyFactory.createKey("Follow", user.getEmail());
-            Entity followerEntity = datastore.get(postKey);
+            Key userKey = KeyFactory.createKey("User", userToFollowEmail+":"+"user");
+            Entity userEntity = datastore.get(userKey);
 
+            //Can return way to many key
+            Query query = new Query("followerShard")
+            .setFilter(new FilterPredicate("shardedFollowerList", FilterOperator.EQUAL, user.getEmail()))
+            .setKeysOnly();
+            
+            PreparedQuery preparedQuery = datastore.prepare(query);
 
-            HashSet<String> followers = (HashSet<String>) followerEntity.getProperty("follower");
-    
+            FetchOptions fetchOptions = FetchOptions.Builder.withLimit(2);
+            
+            QueryResultList<Entity> results = preparedQuery.asQueryResultList(fetchOptions);
+
+            if(results == null){
+                addFollower(user, userToFollowEmail, (int) userEntity.getProperty("followerShardAmount"));
+            }
             
 
-            datastore.put(followerEntity);
+        }catch(EntityNotFoundException e){
+            System.err.println("User not found, check key");
+            e.printStackTrace();
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+	}
+
+    /**
+     * SLOW AF
+     * @param user
+     * @param userToFollowKey
+     */
+    private static void addFollower(User user, String userToFollowBaseKey, int numberOfShard ){
+        Transaction transaction = datastore.beginTransaction();
+
+        try {
+
+            Key shard_key = KeyFactory.createKey("followerShard", userToFollowBaseKey+":"+"shard_"+ rng.nextInt(numberOfShard));
+            Entity shardEntity = datastore.get(shard_key);
+
+            HashSet<String> follower = (HashSet<String>) shardEntity.getProperty("shardedFollowerList");
+
+            follower.add(user.getEmail());
+
+            //HACK: possible bug since set property was not called
+            datastore.put(shardEntity);
             transaction.commit();
 
-        }catch(Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }finally {
             if(transaction.isActive()){
                 transaction.rollback();
             }
         }
-	}
+    }
 
     @ApiMethod(name = "likePost", httpMethod = HttpMethod.POST)
 	public Object likePost(User user, @Named("postid") String postid ) throws UnauthorizedException {
