@@ -15,6 +15,7 @@ import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Random;
 
 
@@ -56,7 +57,7 @@ public class TinygramEndpoint {
 	}
 
     @ApiMethod(name = "register", httpMethod = HttpMethod.POST)
-    public Boolean register(User user) throws UnauthorizedException{
+    public Object register(User user) throws UnauthorizedException{
         //Create user entity so that other user can start following
         if (user == null) {
 			throw INVALID_CREDENTIALS;
@@ -67,10 +68,10 @@ public class TinygramEndpoint {
 
         try {
             datastore.get(key);
-            return false;
+            return "User already registered in db";
         } catch (EntityNotFoundException e) {
             createUserEntity(user);
-            return true;
+            return "User registered";
         }
 
     }
@@ -96,23 +97,31 @@ public class TinygramEndpoint {
              }
          }
  
-         Transaction transaction = datastore.beginTransaction();
-         try {
-             for (int i = 0; i < FOLLOWER_SHARD_NUMBER; i++) { 
+        
+        
+      
+             for (int i = 0; i < FOLLOWER_SHARD_NUMBER; i++) {
+
+                Transaction transaction = datastore.beginTransaction();;
+
+                try {
+
                  Entity shard = new Entity("followerShard",user.getEmail()+":"+"shard_"+ i);
+
                  HashSet<String> followerAccount = new HashSet<String>();
                  followerAccount.add("");
+
                  shard.setProperty("shardedFollowerList", followerAccount);
                  datastore.put(shard);
+                 transaction.commit();
+                }catch(Exception e){
+                    e.printStackTrace();
+                }finally {
+                    if(transaction.isActive()){
+                        transaction.rollback();
+                    }
+                }
              }
-             transaction.commit();
-         }catch(Exception e){
-             e.printStackTrace();
-         }finally {
-             if(transaction.isActive()){
-                 transaction.rollback();
-             }
-         }
  
     }
 
@@ -133,7 +142,7 @@ public class TinygramEndpoint {
 		postEntity.setProperty("date", new Date());
 
 
-        HashSet<String> likeaccounts = new HashSet<String>();
+        List<String> likeaccounts = new ArrayList<String>();
         
         //IDK why this is needed but if i don't write it then likeaccounts is considered null
         likeaccounts.add("");
@@ -155,7 +164,7 @@ public class TinygramEndpoint {
 			throw INVALID_CREDENTIALS;
 		}
 
-        System.out.println("you made it : " + userToFollowEmail);
+        System.out.println("user:"+ user.getEmail() +" followed: " + userToFollowEmail);
 
         try{
 
@@ -199,7 +208,7 @@ public class TinygramEndpoint {
             Key shard_key = KeyFactory.createKey("followerShard", userToFollowBaseKey+":"+"shard_"+ rng.nextInt(numberOfShard));
             Entity shardEntity = datastore.get(shard_key);
 
-            HashSet<String> follower = (HashSet<String>) shardEntity.getProperty("shardedFollowerList");
+            List<String> follower = (ArrayList<String>) shardEntity.getProperty("shardedFollowerList");
 
             follower.add(user.getEmail());
 
@@ -224,7 +233,7 @@ public class TinygramEndpoint {
 
         Long likes = null;
 
-        System.out.println("you made it : " + postid);
+        System.out.println("user:"+ user.getEmail() +" liked: " + postid);
 
         Transaction transaction = datastore.beginTransaction();
 
@@ -234,7 +243,7 @@ public class TinygramEndpoint {
             Entity post = datastore.get(postKey);
 
 
-            HashSet<String> usersWhoLiked = (HashSet<String>) post.getProperty("likeaccounts");
+            List<String> usersWhoLiked = (ArrayList<String>) post.getProperty("likeaccounts");
 
             Long currentLikesCount = (Long) post.getProperty("likec");
 

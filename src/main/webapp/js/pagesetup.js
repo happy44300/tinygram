@@ -51,6 +51,16 @@ function handleCredentialResponse(response) {
         responsePayload.family_name,
         responsePayload.picture,
         responsePayload.email);
+
+    //Send ask server to register client
+    m.request({
+        method: "POST",
+        url: "_ah/api/tinygram/v1/register?access_token=" + encodeURIComponent(User.credential),
+    }).then(function (res) {
+        console.log(res);
+    })
+
+
 }
 
 
@@ -58,7 +68,7 @@ const PromptView = {
     isPromptDisabled: true,
     view: function(){
 
-        return m('div', {class: 'form my-3 mx-auto border-0', style:"width: 50%"},[
+        return m('div', {class: 'form my-3 mx-auto border-0', id:"myform", style:"width: 50%"},[
 
             m("button", {
                 "class":"btn btn-secondary",
@@ -136,14 +146,19 @@ const PostController = {
             url: "_ah/api/tinygram/v1/publishPost?access_token=" + encodeURIComponent(User.credential),
             params: post
         })
-        .then(function (result) {
-            console.log("Uploaded Post!");
-            console.log(result);
+            .then(function (result) {
+                console.log("Uploaded Post!");
+                console.log(result);
 
-            //Updates the current timeline to show the post just uploaded
-            Timeline.addPost(result.properties, result.key.name);
-        })
+                //Updates the current timeline to show the post just uploaded
+                Timeline.addPost(result.properties, result.key.name);
+            })
+    },
+
+    followPost : function (post){
+
     }
+
 };
 
 
@@ -179,25 +194,33 @@ const Timeline = {
     followedPosts: [],
     next: "",
     addPost: function (post, postid) {
-        this.posts.push( 
+        this.posts.push(
             m("div", {class: "card my-3 mx-auto", id:"post", style: "width: 50%;"}, [
                 m("img", {class: "card-static_dir-top", src: post.url}),
                 m("div", {class: "card-body"},
                     m("p", {class: "card-text"}, post.body),
-                    m("a", {href: "", class: "btn btn-danger w-100", onclick: function(e){
+                    m("button", {href: "", type:"button", class: "btn btn-danger w-100", onclick: function(e){
 
-                        //FOR THE LOVE OF GOD I CANT MAKE THIS REQUEST WORK
-                        m.request({
-                            method: "POST",
-                            url: "_ah/api/tinygram/v1/likePost/" + encodeURIComponent(postid) + "?access_token=" + encodeURIComponent(User.credential),
-                            //params:{'postid': }
-                        })
-                        .then(function(result){
-                            console.log("number of likes" + result)
-                            document.getElementById(postid).innerHTML = result;
-                        });
-                    }}, "Like"),
-                    m("div",{class: "", id:postid}, post.likec))
+                            if(!User.isLogged){return;}
+                            //FOR THE LOVE OF GOD I CANT MAKE THIS REQUEST WORK
+                            m.request({
+                                method: "POST",
+                                url: "_ah/api/tinygram/v1/likePost/" + encodeURIComponent(postid) + "?access_token=" + encodeURIComponent(User.credential),
+                                //params:{'postid': }
+                            })
+                                .then(function(result){
+                                    console.log("number of likes" + result)
+                                    document.getElementById(postid).innerHTML = result;
+                                });
+                        }}, "Like"),
+                    m("button", {href: "", type:"button", class: "btn btn-primary", onclick: function(e){
+                            if(!User.isLogged){return;}
+                            m.request({
+                                method: "POST",
+                                url: "_ah/api/tinygram/v1/follow/" + encodeURIComponent(post.owner) + "?access_token=" + encodeURIComponent(User.credential),
+                            })
+                        }}, "Follow post author"),
+                    m("div",{class: "", id:postid},`Like: ${post.likec}`))
             ])
         );
     },
@@ -225,7 +248,7 @@ const Timeline = {
                     console.log("entity from get, to string()! :" + JSON.stringify(entity));
 
                     console.log("url?" + entity.url);
-                    Timeline.addPost(entity, item.key.name);  
+                    Timeline.addPost(entity, item.key.name);
                 }
             }
             Timeline.next=result.nextPageToken;
@@ -248,11 +271,11 @@ const TimelineView = {
     view: function () {
         return m('div', {class: 'text-center'}, [Timeline.posts,
             m('button', {
-                type:"submit",
+                type:"button",
                 class:"btn btn-block btn-primary mx-auto",
                 style:"auto",
                 onclick: function(e){
-                   Timeline.getDefaultPosts();
+                    Timeline.getDefaultPosts();
                 }
             },"Load more post")
         ])
@@ -268,7 +291,7 @@ const Prompt = {
 const MainView = {
     view: function () {
         return m("div", {class: 'row align-items-start'},[
-        m(SettingsBarView),
+            m(SettingsBarView),
             m('div', {class: 'container'}, [
 
                 m('div', {class: 'col'}, [
@@ -281,3 +304,5 @@ const MainView = {
 };
 
 m.mount(document.body, MainView);
+
+
