@@ -170,7 +170,6 @@ public class TinygramEndpoint {
         System.out.println("user:"+ user.getEmail() +" followed: " + userToFollowEmail);
 
         try{
-
             Key userKey = KeyFactory.createKey("User", userToFollowEmail+":"+"user");
             Entity userEntity = datastore.get(userKey);
 
@@ -180,9 +179,9 @@ public class TinygramEndpoint {
             Query query = new Query("followerShard")
             .setFilter(CompositeFilterOperator.and(
                 (CompositeFilterOperator.and(
-                    new FilterPredicate("__key__", FilterOperator.LESS_THAN_OR_EQUAL, KeyFactory.stringToKey(userToFollowEmail+":shard_"+numberOfShard)),
-                    new FilterPredicate("__key__", FilterOperator.GREATER_THAN_OR_EQUAL, KeyFactory.stringToKey(userToFollowEmail+":shard_0")))),
-                new FilterPredicate("sharderFollowerList", FilterOperator.EQUAL, user.getEmail())))
+                    new FilterPredicate("__key__", FilterOperator.LESS_THAN_OR_EQUAL, KeyFactory.createKey("followerShard", userToFollowEmail+":shard_"+numberOfShard)),
+                    new FilterPredicate("__key__", FilterOperator.GREATER_THAN_OR_EQUAL, KeyFactory.createKey("followerShard", userToFollowEmail+":shard_0")))),
+                new FilterPredicate("shardedFollowerList", FilterOperator.EQUAL, user.getEmail())))
             .setKeysOnly();
 
             PreparedQuery preparedQuery = datastore.prepare(query);
@@ -191,7 +190,9 @@ public class TinygramEndpoint {
             
             QueryResultList<Entity> results = preparedQuery.asQueryResultList(fetchOptions);
 
-            if(results == null){
+            System.out.println(results);
+
+            if(results.isEmpty()){
                 addFollower(user, userToFollowEmail, numberOfShard.intValue());
             }
             
