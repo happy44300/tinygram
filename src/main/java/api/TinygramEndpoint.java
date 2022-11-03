@@ -3,14 +3,17 @@ import com.google.api.server.spi.config.*;
 import com.google.api.server.spi.response.CollectionResponse;
 import com.google.appengine.api.ThreadManager;
 import com.google.appengine.api.datastore.*;
+import com.google.appengine.api.datastore.Query;
 import com.google.appengine.api.users.User;
 import com.google.api.server.spi.config.ApiMethod.HttpMethod;
 import com.google.api.server.spi.response.UnauthorizedException;
+import com.google.appengine.api.datastore.Query.CompositeFilterOperator;
 import com.google.appengine.api.datastore.Query.FilterOperator;
 import com.google.appengine.api.datastore.Query.FilterPredicate;
 import com.google.appengine.api.datastore.Query.SortDirection;
 import dto.PostMessage;
 
+import java.io.Console;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -171,19 +174,25 @@ public class TinygramEndpoint {
             Key userKey = KeyFactory.createKey("User", userToFollowEmail+":"+"user");
             Entity userEntity = datastore.get(userKey);
 
-            //Can return way to many key
+            Long numberOfShard = (Long) userEntity.getProperty("followerShardAmount");
+
+            //Can return way too many key
             Query query = new Query("followerShard")
-            .setFilter(new FilterPredicate("shardedFollowerList", FilterOperator.EQUAL, user.getEmail()))
+            .setFilter(CompositeFilterOperator.and(
+                (CompositeFilterOperator.and(
+                    new FilterPredicate("__key__", FilterOperator.LESS_THAN_OR_EQUAL, KeyFactory.stringToKey(userToFollowEmail+":shard_"+numberOfShard)),
+                    new FilterPredicate("__key__", FilterOperator.GREATER_THAN_OR_EQUAL, KeyFactory.stringToKey(userToFollowEmail+":shard_0")))),
+                new FilterPredicate("sharderFollowerList", FilterOperator.EQUAL, user.getEmail())))
             .setKeysOnly();
-            
+
             PreparedQuery preparedQuery = datastore.prepare(query);
 
-            FetchOptions fetchOptions = FetchOptions.Builder.withLimit(2);
+            FetchOptions fetchOptions = FetchOptions.Builder.withLimit(numberOfShard.intValue());
             
             QueryResultList<Entity> results = preparedQuery.asQueryResultList(fetchOptions);
 
             if(results == null){
-                addFollower(user, userToFollowEmail, (int) userEntity.getProperty("followerShardAmount"));
+                addFollower(user, userToFollowEmail, numberOfShard.intValue());
             }
             
 

@@ -202,11 +202,9 @@ const Timeline = {
                     m("button", {href: "", type:"button", class: "btn btn-danger w-100", onclick: function(e){
 
                             if(!User.isLogged){return;}
-                            //FOR THE LOVE OF GOD I CANT MAKE THIS REQUEST WORK
                             m.request({
                                 method: "POST",
-                                url: "_ah/api/tinygram/v1/likePost/" + encodeURIComponent(postid) + "?access_token=" + encodeURIComponent(User.credential),
-                                //params:{'postid': }
+                                url: "_ah/api/tinygram/v1/likePost/" + encodeURIComponent(postid) + "?access_token=" + encodeURIComponent(User.credential)
                             })
                                 .then(function(result){
                                     console.log("number of likes" + result)
@@ -215,6 +213,7 @@ const Timeline = {
                         }}, "Like"),
                     m("button", {href: "", type:"button", class: "btn btn-primary", onclick: function(e){
                             if(!User.isLogged){return;}
+                            console.log("bruh");
                             m.request({
                                 method: "POST",
                                 url: "_ah/api/tinygram/v1/follow/" + encodeURIComponent(post.owner) + "?access_token=" + encodeURIComponent(User.credential),
