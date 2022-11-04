@@ -3,7 +3,6 @@ import com.google.api.server.spi.config.*;
 import com.google.api.server.spi.response.CollectionResponse;
 import com.google.appengine.api.ThreadManager;
 import com.google.appengine.api.datastore.*;
-import com.google.appengine.api.datastore.Query;
 import com.google.appengine.api.users.User;
 import com.google.api.server.spi.config.ApiMethod.HttpMethod;
 import com.google.api.server.spi.response.UnauthorizedException;
@@ -20,6 +19,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 
 @Api(name = "tinygram",
@@ -39,8 +39,31 @@ public class TinygramEndpoint {
 
     private static final int FOLLOWER_SHARD_NUMBER = 2;
 
+    @ApiMethod(name = "getPostFromFollowedSenders", httpMethod = HttpMethod.GET)
+    public CollectionResponse<Entity> getPostFromFollowedSenders(User user, @Nullable @Named("next") String cursorString) throws UnauthorizedException {
+
+        if (user == null) {
+			throw INVALID_CREDENTIALS;
+		}
+
+        System.out.println("next: " + cursorString);
+
+        Query query = new Query("ReceiverShard")
+        .setFilter(new FilterPredicate("receiversList", FilterOperator.GREATER_THAN_OR_EQUAL, KeyFactory.createKey("followerShard", user.getEmail()+":shard_0")))
+        .setKeysOnly();
+        
+        PreparedQuery preparedQuery = datastore.prepare(query);
+        FetchOptions fetchOptions = FetchOptions.Builder.withLimit(100);
+        QueryResultList<Entity> results = preparedQuery.asQueryResultList(fetchOptions);
+
+        List<Key> postKeys = results.stream().map(Entity::getParent).collect(Collectors.toList());
+        cursorString = results.getCursor().toWebSafeString();
+
+        return CollectionResponse.<Entity>builder().setItems(datastore.get(postKeys).values()).setNextPageToken(cursorString).build();
+    }
+
 	@ApiMethod(name = "GetPost", httpMethod = HttpMethod.GET)
-	public CollectionResponse<Entity> GetPost(@Nullable @Named("next") String cursorString) throws UnauthorizedException {
+	public CollectionResponse<Entity> GetPost(@Nullable @Named("next") String cursorString){
 
         Query query = new Query("Post").addSort("date", SortDirection.DESCENDING);
 
@@ -50,7 +73,7 @@ public class TinygramEndpoint {
         FetchOptions fetchOptions = FetchOptions.Builder.withLimit(1);
 
         if (cursorString != null) {
-        fetchOptions.startCursor(Cursor.fromWebSafeString(cursorString));
+            fetchOptions.startCursor(Cursor.fromWebSafeString(cursorString));
         }
 
         QueryResultList<Entity> results = preparedQuery.asQueryResultList(fetchOptions);
@@ -136,8 +159,8 @@ public class TinygramEndpoint {
         if(post.body == null && post.pictureUrl == null){
             throw new InvalidParameterException("post body and picture are null");
         }
-
-		Entity postEntity = new Entity("Post",Long.MAX_VALUE-(new Date()).getTime()+":"+user.getEmail());
+        Key postKey = KeyFactory.createKey("Post", Long.MAX_VALUE-(new Date()).getTime()+":"+user.getEmail());
+		Entity postEntity = new Entity(postKey);
 		postEntity.setProperty("url", post.pictureUrl);
 		postEntity.setProperty("body", post.body);
         postEntity.setProperty("owner", user.getEmail());
@@ -154,11 +177,49 @@ public class TinygramEndpoint {
 
 		System.out.println("Yeah:"+ post);
 
-		Transaction txn = datastore.beginTransaction();
-		datastore.put(postEntity);
-		txn.commit();
+        Key userKey = KeyFactory.createKey("User", user.getEmail()+":user");
+        try {
+            Entity userEntity = datastore.get(userKey);
+            Long numberOfShards = (Long) userEntity.getProperty("followerShardAmount");
 
-		return postEntity;
+            Key shardKey = KeyFactory.createKey("followerShard", user.getEmail()+":user");
+
+            Query query = new Query("followerShard")
+            .setFilter(CompositeFilterOperator.and(
+                new FilterPredicate("__key__", FilterOperator.LESS_THAN_OR_EQUAL, KeyFactory.createKey("followerShard", user.getEmail()+":shard_"+numberOfShards)),
+                new FilterPredicate("__key__", FilterOperator.GREATER_THAN_OR_EQUAL, KeyFactory.createKey("followerShard", user.getEmail()+":shard_0"))));
+        
+            PreparedQuery preparedQuery = datastore.prepare(query);
+            FetchOptions fetchOptions = FetchOptions.Builder.withLimit(numberOfShards.intValue());
+            QueryResultList<Entity> results = preparedQuery.asQueryResultList(fetchOptions);
+
+            List<Entity> shardedEntities = new ArrayList<>(numberOfShards.intValue());
+
+            for(int i = 0; i < numberOfShards; i++){
+                Key receiversShardKey = KeyFactory.createKey(postKey, "ReceiverShard", ":shard_"+i);
+                Entity shardedReceiversListEntity = new Entity(receiversShardKey);
+
+                shardedReceiversListEntity.setProperty("receiversList", results.get(i).getProperty("shardedFollowerList"));
+
+                shardedEntities.add(shardedReceiversListEntity);
+            }
+
+            Transaction txn = datastore.beginTransaction();
+            datastore.put(postEntity);
+            datastore.put(shardedEntities);
+		    txn.commit();
+
+            return postEntity;
+
+        } catch (EntityNotFoundException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        
+
+		System.out.println("Uploading post didn't work!");
+
+		return null;
 	}
 
     @ApiMethod(name = "follow", httpMethod = HttpMethod.POST)
@@ -173,27 +234,27 @@ public class TinygramEndpoint {
             Key userKey = KeyFactory.createKey("User", userToFollowEmail+":"+"user");
             Entity userEntity = datastore.get(userKey);
 
-            Long numberOfShard = (Long) userEntity.getProperty("followerShardAmount");
+            Long numberOfShards = (Long) userEntity.getProperty("followerShardAmount");
 
             //Can return way too many key
             Query query = new Query("followerShard")
             .setFilter(CompositeFilterOperator.and(
                 (CompositeFilterOperator.and(
-                    new FilterPredicate("__key__", FilterOperator.LESS_THAN_OR_EQUAL, KeyFactory.createKey("followerShard", userToFollowEmail+":shard_"+numberOfShard)),
+                    new FilterPredicate("__key__", FilterOperator.LESS_THAN_OR_EQUAL, KeyFactory.createKey("followerShard", userToFollowEmail+":shard_"+numberOfShards)),
                     new FilterPredicate("__key__", FilterOperator.GREATER_THAN_OR_EQUAL, KeyFactory.createKey("followerShard", userToFollowEmail+":shard_0")))),
                 new FilterPredicate("shardedFollowerList", FilterOperator.EQUAL, user.getEmail())))
             .setKeysOnly();
 
             PreparedQuery preparedQuery = datastore.prepare(query);
 
-            FetchOptions fetchOptions = FetchOptions.Builder.withLimit(numberOfShard.intValue());
+            FetchOptions fetchOptions = FetchOptions.Builder.withLimit(numberOfShards.intValue());
             
             QueryResultList<Entity> results = preparedQuery.asQueryResultList(fetchOptions);
 
             System.out.println(results);
 
             if(results.isEmpty()){
-                addFollower(user, userToFollowEmail, numberOfShard.intValue());
+                addFollower(user, userToFollowEmail, numberOfShards.intValue());
             }
             
 
@@ -210,12 +271,12 @@ public class TinygramEndpoint {
      * @param user
      * @param userToFollowKey
      */
-    private static void addFollower(User user, String userToFollowBaseKey, int numberOfShard ){
+    private static void addFollower(User user, String userToFollowBaseKey, int numberOfShards ){
         Transaction transaction = datastore.beginTransaction();
 
         try {
 
-            Key shard_key = KeyFactory.createKey("followerShard", userToFollowBaseKey+":"+"shard_"+ rng.nextInt(numberOfShard));
+            Key shard_key = KeyFactory.createKey("followerShard", userToFollowBaseKey+":"+"shard_"+ rng.nextInt(numberOfShards));
             Entity shardEntity = datastore.get(shard_key);
 
             List<String> follower = (ArrayList<String>) shardEntity.getProperty("shardedFollowerList");

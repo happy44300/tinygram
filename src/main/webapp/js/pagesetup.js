@@ -261,7 +261,34 @@ const Timeline = {
     },
 
     loadFollowedPosts: function () {
-        //TODO: implement
+        console.log("loading followed posts...");
+        m.request({
+            method:"GET",
+            url:"_ah/api/tinygram/v1/getPostFromFollowedSenders" + "?access_token=" + encodeURIComponent(User.credential),
+            params:{"next": encodeURIComponent(Timeline.next)}
+
+        }).then(function(result) {
+            console.log(result)
+
+            if(result == null){
+                return;
+            }
+
+            if(result.hasOwnProperty("items")){
+                for(let item of result.items){
+                    console.log("item from get! :" + item);
+                    console.log("item from get, to string()! :" + JSON.stringify(item));
+                    let entity = item.properties;
+
+                    console.log("entity from get! :" + entity);
+                    console.log("entity from get, to string()! :" + JSON.stringify(entity));
+
+                    console.log("url?" + entity.url);
+                    Timeline.addPost(entity, item.key.name);
+                }
+            }
+            Timeline.next=result.nextPageToken;
+        })
     },
 };
 
