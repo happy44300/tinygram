@@ -39,8 +39,8 @@ public class TinygramEndpoint {
 
     private static final int FOLLOWER_SHARD_NUMBER = 2;
 
-    @ApiMethod(name = "getPostFromFollowedSenders", httpMethod = HttpMethod.GET)
-    public CollectionResponse<Entity> getPostFromFollowedSenders(User user, @Nullable @Named("next") String cursorString) throws UnauthorizedException {
+    @ApiMethod(name = "GetPostsFromFollowedSenders", httpMethod = HttpMethod.GET)
+    public CollectionResponse<Entity> GetPostsFromFollowedSenders(User user, @Nullable @Named("next") String cursorString) throws UnauthorizedException {
 
         if (user == null) {
 			throw INVALID_CREDENTIALS;
@@ -58,7 +58,7 @@ public class TinygramEndpoint {
 
         List<Key> postKeys = results.stream().map(Entity::getParent).collect(Collectors.toList());
         cursorString = results.getCursor().toWebSafeString();
-
+        
         return CollectionResponse.<Entity>builder().setItems(datastore.get(postKeys).values()).setNextPageToken(cursorString).build();
     }
 

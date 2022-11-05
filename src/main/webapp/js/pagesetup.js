@@ -264,8 +264,8 @@ const Timeline = {
         console.log("loading followed posts...");
         m.request({
             method:"GET",
-            url:"_ah/api/tinygram/v1/getPostFromFollowedSenders" + "?access_token=" + encodeURIComponent(User.credential),
-            params:{"next": encodeURIComponent(Timeline.next)}
+            url:"_ah/api/tinygram/v1/GetPostsFromFollowedSenders" + "?access_token=" + encodeURIComponent(User.credential),
+            params:{"next": Timeline.next}
 
         }).then(function(result) {
             console.log(result)
