@@ -76,7 +76,7 @@ const PromptView = {
                 "checked":"checked",
                 onclick: function (e) {
                     Timeline.clear();
-                    Timeline.getDefaultPosts()
+                    Timeline.switchToDefaultPosts()
                 }},"Display All"),
 
             m("button", {
@@ -84,7 +84,7 @@ const PromptView = {
                 "id":"option2",
                 onclick: function (e) {
                     Timeline.clear();
-                    Timeline.loadFollowedPosts();
+                    Timeline.switchToFollowedPosts();
                 }}, "Display followed"),
 
             m("div",{class:"form-group"},[
@@ -193,6 +193,8 @@ const Timeline = {
     posts: [],
     followedPosts: [],
     next: "",
+    isInFollowedTab : false,
+
     addPost: function (post, postid) {
         this.posts.push(
             m("div", {class: "card my-3 mx-auto", id:"post", style: "width: 50%;"}, [
@@ -223,7 +225,9 @@ const Timeline = {
             ])
         );
     },
-    getDefaultPosts: function () {
+    switchToDefaultPosts: function () {
+
+        Timeline.isInFollowedTab = false;
 
         m.request({
             method:"GET",
@@ -260,8 +264,10 @@ const Timeline = {
         m.redraw()
     },
 
-    loadFollowedPosts: function () {
+
+    switchToFollowedPosts: function () {
         console.log("loading followed posts...");
+        Timeline.isInFollowedTab = true;
         m.request({
             method:"GET",
             url:"_ah/api/tinygram/v1/GetPostsFromFollowedSenders" + "?access_token=" + encodeURIComponent(User.credential),
@@ -290,10 +296,15 @@ const Timeline = {
             Timeline.next=result.nextPageToken;
         })
     },
+
+    loadPost: ()=>{
+        Timeline.isInFollowedTab ? Timeline.switchToFollowedPosts() : Timeline.switchToDefaultPosts();
+    },
+
 };
 
 const TimelineView = {
-    oninit: Timeline.getDefaultPosts,
+    oninit: Timeline.switchToDefaultPosts,
     view: function () {
         return m('div', {class: 'text-center'}, [Timeline.posts,
             m('button', {
@@ -301,7 +312,7 @@ const TimelineView = {
                 class:"btn btn-block btn-primary mx-auto",
                 style:"auto",
                 onclick: function(e){
-                    Timeline.getDefaultPosts();
+                    Timeline.loadPost();
                 }
             },"Load more post")
         ])

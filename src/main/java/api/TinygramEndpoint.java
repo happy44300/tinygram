@@ -15,6 +15,7 @@ import dto.PostMessage;
 import java.io.Console;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -49,17 +50,33 @@ public class TinygramEndpoint {
         System.out.println("next: " + cursorString);
 
         Query query = new Query("ReceiverShard")
-        .setFilter(new FilterPredicate("receiversList", FilterOperator.GREATER_THAN_OR_EQUAL, KeyFactory.createKey("followerShard", user.getEmail()+":shard_0")))
-        .setKeysOnly();
+            .setFilter(new FilterPredicate("receiversList", FilterOperator.EQUAL, user.getEmail()))
+            .setKeysOnly();
         
         PreparedQuery preparedQuery = datastore.prepare(query);
-        FetchOptions fetchOptions = FetchOptions.Builder.withLimit(100);
+        FetchOptions fetchOptions = FetchOptions.Builder.withLimit(1); // for the cursor demo, we set the limit to 1
+
+        if (cursorString != null) {
+            fetchOptions.startCursor(Cursor.fromWebSafeString(cursorString));
+        }
+
+
         QueryResultList<Entity> results = preparedQuery.asQueryResultList(fetchOptions);
 
-        List<Key> postKeys = results.stream().map(Entity::getParent).collect(Collectors.toList());
+        System.out.println("key " + results.toString());
+
+        List<Key> postKeys = results.stream()
+            .map(Entity::getParent)
+            .collect(Collectors.toList());
+
         cursorString = results.getCursor().toWebSafeString();
         
-        return CollectionResponse.<Entity>builder().setItems(datastore.get(postKeys).values()).setNextPageToken(cursorString).build();
+        Collection<Entity> posts = datastore.get(postKeys).values();
+        System.out.println("Post " + posts.toString());
+
+        return CollectionResponse.<Entity>builder()
+            .setItems(posts)
+            .setNextPageToken(cursorString).build();
     }
 
 	@ApiMethod(name = "GetPost", httpMethod = HttpMethod.GET)
@@ -236,7 +253,6 @@ public class TinygramEndpoint {
 
             Long numberOfShards = (Long) userEntity.getProperty("followerShardAmount");
 
-            //Can return way too many key
             Query query = new Query("followerShard")
             .setFilter(CompositeFilterOperator.and(
                 (CompositeFilterOperator.and(
@@ -267,7 +283,7 @@ public class TinygramEndpoint {
 	}
 
     /**
-     * SLOW AF
+     * Add folower
      * @param user
      * @param userToFollowKey
      */
