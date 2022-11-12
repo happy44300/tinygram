@@ -209,8 +209,16 @@ const Timeline = {
                                 url: "_ah/api/tinygram/v1/likePost/" + encodeURIComponent(postid) + "?access_token=" + encodeURIComponent(User.credential)
                             })
                                 .then(function(result){
-                                    console.log("number of likes" + result)
-                                    document.getElementById(postid).innerHTML = result;
+                                    if(result != null){
+                                        console.log("liked post")
+                                        console.log(document.getElementById(postid).innerHTML);
+                                        let displayedLikes = parseInt(document.getElementById(postid).innerHTML, 10);
+                                        console.log(displayedLikes); 
+                                        document.getElementById(postid).innerHTML = displayedLikes + 1;
+                                    }else {
+                                        console.log("couldn't like");
+                                    }
+                                    
                                 });
                         }}, "Like"),
                     m("button", {href: "", type:"button", class: "btn btn-primary", onclick: function(e){
@@ -221,7 +229,8 @@ const Timeline = {
                                 url: "_ah/api/tinygram/v1/follow/" + encodeURIComponent(post.owner) + "?access_token=" + encodeURIComponent(User.credential),
                             })
                         }}, "Follow post author"),
-                    m("div",{class: "", id:postid},`Like: ${post.likec}`))
+                        m("div",{class: ""},`Likes: `),
+                    m("div",{class: "", id:postid},`${post.likec}`))
             ])
         );
     },
@@ -231,11 +240,11 @@ const Timeline = {
 
         m.request({
             method:"GET",
-            url:"_ah/api/tinygram/v1/GetPost",
+            url:"_ah/api/tinygram/v1/retrievePost",
             params:{"next": Timeline.next}
 
         }).then(function(result) {
-            console.log(result)
+            console.log("REGARDE ICI GROS MALIN" + JSON.stringify(result));
 
             if(result == null){
                 return;
@@ -270,7 +279,7 @@ const Timeline = {
         Timeline.isInFollowedTab = true;
         m.request({
             method:"GET",
-            url:"_ah/api/tinygram/v1/GetPostsFromFollowedSenders" + "?access_token=" + encodeURIComponent(User.credential),
+            url:"_ah/api/tinygram/v1/retrievePostsFromFollowedSenders" + "?access_token=" + encodeURIComponent(User.credential),
             params:{"next": Timeline.next}
 
         }).then(function(result) {

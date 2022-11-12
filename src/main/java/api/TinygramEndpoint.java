@@ -39,9 +39,10 @@ public class TinygramEndpoint {
     private static final Random rng = new Random();
 
     private static final int FOLLOWER_SHARD_NUMBER = 2;
+    private static final int LIKER_SHARD_NUMBER = 2;
 
-    @ApiMethod(name = "GetPostsFromFollowedSenders", httpMethod = HttpMethod.GET)
-    public CollectionResponse<Entity> GetPostsFromFollowedSenders(User user, @Nullable @Named("next") String cursorString) throws UnauthorizedException {
+    @ApiMethod(name = "retrievePostsFromFollowedSenders", httpMethod = HttpMethod.GET)
+    public CollectionResponse<Entity> retrievePostsFromFollowedSenders(User user, @Nullable @Named("next") String cursorString) throws UnauthorizedException {
 
         if (user == null) {
 			throw INVALID_CREDENTIALS;
@@ -79,8 +80,8 @@ public class TinygramEndpoint {
             .setNextPageToken(cursorString).build();
     }
 
-	@ApiMethod(name = "GetPost", httpMethod = HttpMethod.GET)
-	public CollectionResponse<Entity> GetPost(@Nullable @Named("next") String cursorString){
+	@ApiMethod(name = "retrievePost", httpMethod = HttpMethod.GET)
+	public CollectionResponse<Entity> retrievePost(@Nullable @Named("next") String cursorString){
 
         Query query = new Query("Post").addSort("date", SortDirection.DESCENDING);
 
@@ -95,6 +96,33 @@ public class TinygramEndpoint {
 
         QueryResultList<Entity> results = preparedQuery.asQueryResultList(fetchOptions);
         cursorString = results.getCursor().toWebSafeString();
+
+        List<Object> resultsWithLikes = new ArrayList();
+        resultsWithLikes.add(results);
+        resultsWithLikes.add(8);
+
+        System.out.println(results);
+
+
+        Long likesCount = new Long(0);
+
+        for(Entity result: results){
+            Long likerShardsAmount = (Long) result.getProperty("likerShardsAmount");
+
+            for(int i = 0; i < likerShardsAmount; i++){
+                Key shardKey = KeyFactory.createKey(result.getKey(), "LikerShard", ":shard_"+i);
+                try {
+                    Entity shard = datastore.get(shardKey);
+                    likesCount = likesCount + (Long) shard.getProperty("likes");
+                } catch(Exception e){
+                    e.printStackTrace();
+                    System.out.println("Issue retrieving like counter value from a like shard of a post. Post in question : " + result);
+                }
+            }
+
+            result.setProperty("likec", likesCount);
+        }
+        
 
         return CollectionResponse.<Entity>builder().setItems(results).setNextPageToken(cursorString).build();
 	}
@@ -121,10 +149,11 @@ public class TinygramEndpoint {
 
     private static void createUserEntity(User user){
          //Hotspot can occur if users have close email
-         Entity userEntity = new Entity("User",user.getEmail()+":"+"user");
+         Entity userEntity = new Entity("User", user.getEmail()+":"+"user");
 
          userEntity.setProperty("owner", user.getEmail());
          userEntity.setProperty("followerShardAmount", FOLLOWER_SHARD_NUMBER);
+         
  
          Transaction txn = datastore.beginTransaction();
  
@@ -148,8 +177,11 @@ public class TinygramEndpoint {
                 Transaction transaction = datastore.beginTransaction();;
 
                 try {
+                 Key parentKey = KeyFactory.createKey("User", user.getEmail()+":"+"user");
+                 Key shardKey = KeyFactory.createKey(parentKey, "followerShard", ":shard_"+ i);
+                 Entity shard = new Entity(shardKey);
 
-                 Entity shard = new Entity("followerShard",user.getEmail()+":"+"shard_"+ i);
+                 System.out.println(shardKey);
 
                  HashSet<String> followerAccount = new HashSet<String>();
                  followerAccount.add("");
@@ -181,36 +213,34 @@ public class TinygramEndpoint {
 		postEntity.setProperty("url", post.pictureUrl);
 		postEntity.setProperty("body", post.body);
         postEntity.setProperty("owner", user.getEmail());
-		postEntity.setProperty("likec", 0);
+        postEntity.setProperty("likec", 0);
+        postEntity.setProperty("likerShardsAmount", LIKER_SHARD_NUMBER);
 		postEntity.setProperty("date", new Date());
-
-
-        List<String> likeaccounts = new ArrayList<String>();
-        
-        //IDK why this is needed but if i don't write it then likeaccounts is considered null
-        likeaccounts.add("");
-        
-        postEntity.setProperty("likeaccounts", likeaccounts);
 
 		System.out.println("Yeah:"+ post);
 
         Key userKey = KeyFactory.createKey("User", user.getEmail()+":user");
         try {
             Entity userEntity = datastore.get(userKey);
+
             Long numberOfShards = (Long) userEntity.getProperty("followerShardAmount");
 
-            Key shardKey = KeyFactory.createKey("followerShard", user.getEmail()+":user");
+            System.out.println(userEntity);
+            System.out.println(userKey);
+            System.out.println(KeyFactory.createKey(userKey, "followerShard", ":shard_"+numberOfShards));
+            System.out.println(datastore.get(KeyFactory.createKey(userKey, "followerShard", ":shard_"+1)));
+            
 
             Query query = new Query("followerShard")
             .setFilter(CompositeFilterOperator.and(
-                new FilterPredicate("__key__", FilterOperator.LESS_THAN_OR_EQUAL, KeyFactory.createKey("followerShard", user.getEmail()+":shard_"+numberOfShards)),
-                new FilterPredicate("__key__", FilterOperator.GREATER_THAN_OR_EQUAL, KeyFactory.createKey("followerShard", user.getEmail()+":shard_0"))));
+                new FilterPredicate("__key__", FilterOperator.LESS_THAN_OR_EQUAL, KeyFactory.createKey(userKey, "followerShard", ":shard_"+numberOfShards)),
+                new FilterPredicate("__key__", FilterOperator.GREATER_THAN_OR_EQUAL, KeyFactory.createKey(userKey, "followerShard", ":shard_0"))));
         
             PreparedQuery preparedQuery = datastore.prepare(query);
             FetchOptions fetchOptions = FetchOptions.Builder.withLimit(numberOfShards.intValue());
             QueryResultList<Entity> results = preparedQuery.asQueryResultList(fetchOptions);
 
-            List<Entity> shardedEntities = new ArrayList<>(numberOfShards.intValue());
+            List<Entity> shardedReceviersEntities = new ArrayList<>(numberOfShards.intValue());
 
             for(int i = 0; i < numberOfShards; i++){
                 Key receiversShardKey = KeyFactory.createKey(postKey, "ReceiverShard", ":shard_"+i);
@@ -218,12 +248,29 @@ public class TinygramEndpoint {
 
                 shardedReceiversListEntity.setProperty("receiversList", results.get(i).getProperty("shardedFollowerList"));
 
-                shardedEntities.add(shardedReceiversListEntity);
+                shardedReceviersEntities.add(shardedReceiversListEntity);
+            }
+            
+            List<Entity> shardedLikersEntities = new ArrayList<>(numberOfShards.intValue());
+
+            for(int i = 0; i < LIKER_SHARD_NUMBER; i++){
+                Key likersShardKey = KeyFactory.createKey(postKey, "LikerShard", ":shard_"+i);
+                Entity shardedLikersListEntity = new Entity(likersShardKey);
+
+
+                HashSet<String> emptyLikersList = new HashSet<String>();
+                emptyLikersList.add("");
+                
+                shardedLikersListEntity.setProperty("shardedLikerList", emptyLikersList);
+                shardedLikersListEntity.setProperty("likes", 0);
+
+                shardedLikersEntities.add(shardedLikersListEntity);
             }
 
             Transaction txn = datastore.beginTransaction();
             datastore.put(postEntity);
-            datastore.put(shardedEntities);
+            datastore.put(shardedReceviersEntities);
+            datastore.put(shardedLikersEntities);
 		    txn.commit();
 
             return postEntity;
@@ -327,24 +374,42 @@ public class TinygramEndpoint {
         try{
 
             Key postKey = KeyFactory.createKey("Post", postid);
-            Entity post = datastore.get(postKey);
+ 
+            Query query = new Query("LikerShard")
+            .setFilter(CompositeFilterOperator.and(
+                (CompositeFilterOperator.and(
+                    new FilterPredicate("__key__", FilterOperator.LESS_THAN_OR_EQUAL, KeyFactory.createKey(postKey, "LikerShard", ":shard_"+LIKER_SHARD_NUMBER)),
+                    new FilterPredicate("__key__", FilterOperator.GREATER_THAN_OR_EQUAL, KeyFactory.createKey(postKey, "LikerShard", ":shard_0")))),
+                new FilterPredicate("shardedLikerList", FilterOperator.EQUAL, user.getEmail())))
+            .setKeysOnly();
 
+            PreparedQuery preparedQuery = datastore.prepare(query);
 
-            List<String> usersWhoLiked = (ArrayList<String>) post.getProperty("likeaccounts");
+            FetchOptions fetchOptions = FetchOptions.Builder.withLimit(LIKER_SHARD_NUMBER);
+            
+            QueryResultList<Entity> results = preparedQuery.asQueryResultList(fetchOptions);
 
-            Long currentLikesCount = (Long) post.getProperty("likec");
+            System.out.println("C EST LA QUZ CA ZQ PASSE" + results);
 
-            likes = currentLikesCount;
-    
-            if(!usersWhoLiked.contains(user.toString())){
-                
-                post.setProperty("likec", currentLikesCount+1);
-                likes = likes + 1;
-                usersWhoLiked.add(user.toString());
+            if(results.isEmpty()){
+                Key shardKey = KeyFactory.createKey(postKey, "LikerShard", ":shard_"+ rng.nextInt(LIKER_SHARD_NUMBER));
+                Entity shardEntity = datastore.get(shardKey);
 
+                List<String> likers = (ArrayList<String>) shardEntity.getProperty("shardedLikerList");
+
+                if(likers == null) {//This shard contains an empty list, no one who liked has been registered in this shard yet
+                    likers = new ArrayList<String>();
+                }
+
+                likes = (Long) shardEntity.getProperty("likes") + 1;
+                likers.add(user.getEmail());
+                shardEntity.setProperty("likes", likes);
+                shardEntity.setProperty("shardedLikerList", likers);
+
+                //HACK: possible bug since set property was not called
+                datastore.put(shardEntity);
             }
-
-            datastore.put(post);
+            
             transaction.commit();
 
         }catch(Exception e){
