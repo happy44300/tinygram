@@ -1,7 +1,6 @@
 package api;
 import com.google.api.server.spi.config.*;
 import com.google.api.server.spi.response.CollectionResponse;
-import com.google.appengine.api.ThreadManager;
 import com.google.appengine.api.datastore.*;
 import com.google.appengine.api.users.User;
 import com.google.api.server.spi.config.ApiMethod.HttpMethod;
@@ -12,7 +11,6 @@ import com.google.appengine.api.datastore.Query.FilterPredicate;
 import com.google.appengine.api.datastore.Query.SortDirection;
 import dto.PostMessage;
 
-import java.io.Console;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -97,14 +95,14 @@ public class TinygramEndpoint {
         QueryResultList<Entity> results = preparedQuery.asQueryResultList(fetchOptions);
         cursorString = results.getCursor().toWebSafeString();
 
-        List<Object> resultsWithLikes = new ArrayList();
+        List<Object> resultsWithLikes = new ArrayList<>();
         resultsWithLikes.add(results);
         resultsWithLikes.add(8);
 
         System.out.println(results);
 
 
-        Long likesCount = new Long(0);
+        Long likesCount = Long.valueOf(0);
 
         for(Entity result: results){
             Long likerShardsAmount = (Long) result.getProperty("likerShardsAmount");
@@ -168,9 +166,7 @@ public class TinygramEndpoint {
                  txn.rollback();
              }
          }
- 
-        
-        
+       
       
              for (int i = 0; i < FOLLOWER_SHARD_NUMBER; i++) {
 
@@ -303,6 +299,7 @@ public class TinygramEndpoint {
             Query query = new Query("followerShard")
             .setFilter(CompositeFilterOperator.and(
                 (CompositeFilterOperator.and(
+                    //range search
                     new FilterPredicate("__key__", FilterOperator.LESS_THAN_OR_EQUAL, KeyFactory.createKey("followerShard", userToFollowEmail+":shard_"+numberOfShards)),
                     new FilterPredicate("__key__", FilterOperator.GREATER_THAN_OR_EQUAL, KeyFactory.createKey("followerShard", userToFollowEmail+":shard_0")))),
                 new FilterPredicate("shardedFollowerList", FilterOperator.EQUAL, user.getEmail())))
@@ -389,7 +386,6 @@ public class TinygramEndpoint {
             
             QueryResultList<Entity> results = preparedQuery.asQueryResultList(fetchOptions);
 
-            System.out.println("C EST LA QUZ CA ZQ PASSE" + results);
 
             if(results.isEmpty()){
                 Key shardKey = KeyFactory.createKey(postKey, "LikerShard", ":shard_"+ rng.nextInt(LIKER_SHARD_NUMBER));
