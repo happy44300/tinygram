@@ -339,7 +339,10 @@ public class TinygramEndpoint {
 
         try {
 
-            Key shard_key = KeyFactory.createKey("followerShard", userToFollowBaseKey+":"+"shard_"+ rng.nextInt(numberOfShards));
+            Key userToFollowKey = KeyFactory.createKey("User", userToFollowBaseKey+":user"); 
+
+            
+            Key shard_key = KeyFactory.createKey(userToFollowKey, "followerShard", ":shard_"+ rng.nextInt(numberOfShards));
             Entity shardEntity = datastore.get(shard_key);
 
             List<String> follower = (ArrayList<String>) shardEntity.getProperty("shardedFollowerList");
