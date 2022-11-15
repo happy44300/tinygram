@@ -81,12 +81,16 @@ public class TinygramEndpoint {
 	@ApiMethod(name = "retrievePost", httpMethod = HttpMethod.GET)
 	public CollectionResponse<Entity> retrievePost(@Nullable @Named("next") String cursorString){
 
+        return retrieveAnyNumberOfPosts(cursorString, 1);
+	}
+
+    private CollectionResponse<Entity> retrieveAnyNumberOfPosts(String cursorString, int numberOfPostsToRetrieve) {
         Query query = new Query("Post").addSort("date", SortDirection.DESCENDING);
 
 
         PreparedQuery preparedQuery = datastore.prepare(query);
 
-        FetchOptions fetchOptions = FetchOptions.Builder.withLimit(1);
+        FetchOptions fetchOptions = FetchOptions.Builder.withLimit(numberOfPostsToRetrieve);
 
         if (cursorString != null) {
             fetchOptions.startCursor(Cursor.fromWebSafeString(cursorString));
@@ -94,10 +98,6 @@ public class TinygramEndpoint {
 
         QueryResultList<Entity> results = preparedQuery.asQueryResultList(fetchOptions);
         cursorString = results.getCursor().toWebSafeString();
-
-        List<Object> resultsWithLikes = new ArrayList<>();
-        resultsWithLikes.add(results);
-        resultsWithLikes.add(8);
 
         System.out.println(results);
 
@@ -123,7 +123,7 @@ public class TinygramEndpoint {
         
 
         return CollectionResponse.<Entity>builder().setItems(results).setNextPageToken(cursorString).build();
-	}
+    }
 
     @ApiMethod(name = "register", httpMethod = HttpMethod.POST)
     public Object register(User user) throws UnauthorizedException{
@@ -198,24 +198,35 @@ public class TinygramEndpoint {
 
     @ApiMethod(name = "publishPost", httpMethod = HttpMethod.POST)
 	public Entity publishPost(User user, PostMessage post) throws UnauthorizedException {
+        
         if (user == null) {
+            throw INVALID_CREDENTIALS;
+        }
+
+        return publishPostUnchecked(user.getEmail(), post);
+	}
+
+    private Entity publishPostUnchecked(String userEmail, PostMessage post) throws UnauthorizedException {
+
+        if (userEmail == null) {
 			throw INVALID_CREDENTIALS;
 		}
         if(post.body == null && post.pictureUrl == null){
             throw new InvalidParameterException("post body and picture are null");
         }
-        Key postKey = KeyFactory.createKey("Post", Long.MAX_VALUE-(new Date()).getTime()+":"+user.getEmail());
+
+        Key postKey = KeyFactory.createKey("Post", Long.MAX_VALUE-(new Date()).getTime()+":"+userEmail);
 		Entity postEntity = new Entity(postKey);
 		postEntity.setProperty("url", post.pictureUrl);
 		postEntity.setProperty("body", post.body);
-        postEntity.setProperty("owner", user.getEmail());
+        postEntity.setProperty("owner", userEmail);
         postEntity.setProperty("likec", 0);
         postEntity.setProperty("likerShardsAmount", LIKER_SHARD_NUMBER);
 		postEntity.setProperty("date", new Date());
 
 		System.out.println("Yeah:"+ post);
 
-        Key userKey = KeyFactory.createKey("User", user.getEmail()+":user");
+        Key userKey = KeyFactory.createKey("User", userEmail+":user");
         try {
             Entity userEntity = datastore.get(userKey);
 
@@ -280,7 +291,7 @@ public class TinygramEndpoint {
 		System.out.println("Uploading post didn't work!");
 
 		return null;
-	}
+    }
 
     @ApiMethod(name = "follow", httpMethod = HttpMethod.POST)
 	public void follow(User user, @Named("userToFollow") String userToFollowEmail ) throws UnauthorizedException {
@@ -332,6 +343,10 @@ public class TinygramEndpoint {
      * @param userToFollowKey
      */
     private static void addFollower(User user, String userToFollowBaseKey, int numberOfShards ){
+        addFollowerUnchecked(user.getEmail(), userToFollowBaseKey, numberOfShards);
+    }
+
+    private static void addFollowerUnchecked(String userEmail, String userToFollowBaseKey, int numberOfShards) {
         Transaction transaction = datastore.beginTransaction();
 
         try {
@@ -344,7 +359,7 @@ public class TinygramEndpoint {
 
             List<String> follower = (ArrayList<String>) shardEntity.getProperty("shardedFollowerList");
 
-            follower.add(user.getEmail());
+            follower.add(userEmail);
 
             //HACK: possible bug since set property was not called
             datastore.put(shardEntity);
@@ -359,7 +374,7 @@ public class TinygramEndpoint {
         }
     }
 
-    @ApiMethod(name = "likePost", httpMethod = HttpMethod.POST)
+    @ApiMethod(name = "likePost", httpMethod = HttpMethod.GET)
 	public Object likePost(User user, @Named("postid") String postid ) throws UnauthorizedException {
         if (user == null) {
 			throw INVALID_CREDENTIALS;
@@ -421,5 +436,77 @@ public class TinygramEndpoint {
         
         return likes;
 	}
+
+    
+    /**
+     * Benchmark Util Method
+     * @param numberOfFollowers the number of followers to add
+     */
+    private static void createFakeFollowers(String userEmail, int numberOfFollowers){
+
+        try{
+            Key userKey = KeyFactory.createKey("User", userEmail+":user");
+            Entity userEntity = datastore.get(userKey);
+
+            Long numberOfShards = (Long) userEntity.getProperty("followerShardAmount");
+
+            String userFollowingSomeone = "";
+
+            for(int i = 0; i < numberOfFollowers; i++){
+                
+                userFollowingSomeone = "thisisadummyemail" + i + "@maildomain.com";
+
+                addFollowerUnchecked(userFollowingSomeone, userEmail, numberOfShards.intValue());
+            }
+        } catch(Exception e){
+            e.printStackTrace();
+        }
+    }
+
+    @ApiMethod(name = "postThirtyPictures", httpMethod = HttpMethod.GET)
+    public ArrayList<Long> postThirtyPictures(@Named("userEmail") String userEmail, @Named("numberOfFollowers") int numberOfFollowers){
+
+        PostMessage msg;
+
+        createFakeFollowers(userEmail, numberOfFollowers);
+
+        ArrayList<Long> runTimes = new ArrayList<>();
+
+        for(int i = 0; i < 30; i++) {
+            msg = new PostMessage();
+            msg.owner = "erwanbode@gmail.com";
+            msg.body = "body text" + i;
+            msg.pictureUrl = "https://media.giphy.com/media/eePSFNBFv2W9owZ4Sh/giphy.gif";
+        
+            try {
+                Long start = System.currentTimeMillis();
+                publishPostUnchecked("erwanbode@gmail.com", msg);
+                Long end = System.currentTimeMillis();
+
+                runTimes.add(i, end-start); 
+            }catch(Exception e) {
+                e.printStackTrace();
+            }
+        } 
+
+        return runTimes;
+    }
+
+
+    @ApiMethod(name = "retrieveRecentPosts", httpMethod = HttpMethod.GET)
+    public ArrayList<Long> retrieveRecentPosts(@Named("numberOfPostsToRetrieve") int numberOfPostsToRetrieve){
+        
+        ArrayList<Long> runTimes = new ArrayList<>();
+
+        for(int i = 0; i < 10; i++){
+            Long start = System.currentTimeMillis();
+            retrieveAnyNumberOfPosts("", numberOfPostsToRetrieve);
+            Long end = System.currentTimeMillis();
+
+            runTimes.add(end-start);
+        }
+
+        return runTimes;
+    }
 
 }
