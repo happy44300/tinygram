@@ -155,10 +155,6 @@ const PostController = {
             })
     },
 
-    followPost : function (post){
-
-    }
-
 };
 
 
@@ -200,8 +196,8 @@ const Timeline = {
             m("div", {class: "card my-3 mx-auto", id:"post", style: "width: 50%;"}, [
                 m("img", {class: "card-static_dir-top", src: post.url}),
                 m("div", {class: "card-body"},
-                    m("p", {class: "card-text"}, post.body),
-                    m("button", {href: "", type:"button", class: "btn btn-danger w-100", onclick: function(e){
+                    m("h1", {class: "display-6"}, post.body),
+                    m("button", {href: "", type:"button", class: "btn btn-danger", onclick: function(e){
 
                             if(!User.isLogged){return;}
                             m.request({
@@ -229,8 +225,8 @@ const Timeline = {
                                 url: "_ah/api/tinygram/v1/follow/" + encodeURIComponent(post.owner) + "?access_token=" + encodeURIComponent(User.credential),
                             })
                         }}, "Follow post author"),
-                        m("div",{class: ""},`Likes: `),
-                    m("div",{class: "", id:postid},`${post.likec}`))
+                        m("div",{class: ""},`Likes: ${post.likec} `),
+                    m("div",`Author: ${post.owner}`))
             ])
         );
     },
