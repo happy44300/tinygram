@@ -174,7 +174,7 @@ public class TinygramEndpoint {
 
                 try {
                  Key parentKey = KeyFactory.createKey("User", user.getEmail()+":"+"user");
-                 Key shardKey = KeyFactory.createKey(parentKey, "followerShard", ":shard_"+ i);
+                 Key shardKey = KeyFactory.createKey(parentKey, "FollowerShard", ":shard_"+ i);
                  Entity shard = new Entity(shardKey);
 
                  System.out.println(shardKey);
@@ -230,18 +230,18 @@ public class TinygramEndpoint {
         try {
             Entity userEntity = datastore.get(userKey);
 
-            Long numberOfShards = (Long) userEntity.getProperty("followerShardAmount");
+            Long numberOfShards = (Long) userEntity.getProperty("FollowerShardAmount");
 
             System.out.println(userEntity);
             System.out.println(userKey);
-            System.out.println(KeyFactory.createKey(userKey, "followerShard", ":shard_"+numberOfShards));
-            System.out.println(datastore.get(KeyFactory.createKey(userKey, "followerShard", ":shard_"+1)));
+            System.out.println(KeyFactory.createKey(userKey, "FollowerShard", ":shard_"+numberOfShards));
+            System.out.println(datastore.get(KeyFactory.createKey(userKey, "FollowerShard", ":shard_"+1)));
             
 
-            Query query = new Query("followerShard")
+            Query query = new Query("FollowerShard")
             .setFilter(CompositeFilterOperator.and(
-                new FilterPredicate("__key__", FilterOperator.LESS_THAN_OR_EQUAL, KeyFactory.createKey(userKey, "followerShard", ":shard_"+numberOfShards)),
-                new FilterPredicate("__key__", FilterOperator.GREATER_THAN_OR_EQUAL, KeyFactory.createKey(userKey, "followerShard", ":shard_0"))));
+                new FilterPredicate("__key__", FilterOperator.LESS_THAN_OR_EQUAL, KeyFactory.createKey(userKey, "FollowerShard", ":shard_"+numberOfShards)),
+                new FilterPredicate("__key__", FilterOperator.GREATER_THAN_OR_EQUAL, KeyFactory.createKey(userKey, "FollowerShard", ":shard_0"))));
         
             PreparedQuery preparedQuery = datastore.prepare(query);
             FetchOptions fetchOptions = FetchOptions.Builder.withLimit(numberOfShards.intValue());
@@ -307,12 +307,12 @@ public class TinygramEndpoint {
 
             Long numberOfShards = (Long) userEntity.getProperty("followerShardAmount");
 
-            Query query = new Query("followerShard")
+            Query query = new Query("FollowerShard")
             .setFilter(CompositeFilterOperator.and(
                 (CompositeFilterOperator.and(
                     //range search
-                    new FilterPredicate("__key__", FilterOperator.LESS_THAN_OR_EQUAL, KeyFactory.createKey("followerShard", userToFollowEmail+":shard_"+numberOfShards)),
-                    new FilterPredicate("__key__", FilterOperator.GREATER_THAN_OR_EQUAL, KeyFactory.createKey("followerShard", userToFollowEmail+":shard_0")))),
+                    new FilterPredicate("__key__", FilterOperator.LESS_THAN_OR_EQUAL, KeyFactory.createKey("FollowerShard", userToFollowEmail+":shard_"+numberOfShards)),
+                    new FilterPredicate("__key__", FilterOperator.GREATER_THAN_OR_EQUAL, KeyFactory.createKey("FollowerShard", userToFollowEmail+":shard_0")))),
                 new FilterPredicate("shardedFollowerList", FilterOperator.EQUAL, user.getEmail())))
             .setKeysOnly();
 
@@ -354,7 +354,7 @@ public class TinygramEndpoint {
             Key userToFollowKey = KeyFactory.createKey("User", userToFollowBaseKey+":user"); 
 
             
-            Key shard_key = KeyFactory.createKey(userToFollowKey, "followerShard", ":shard_"+ rng.nextInt(numberOfShards));
+            Key shard_key = KeyFactory.createKey(userToFollowKey, "FollowerShard", ":shard_"+ rng.nextInt(numberOfShards));
             Entity shardEntity = datastore.get(shard_key);
 
             List<String> follower = (ArrayList<String>) shardEntity.getProperty("shardedFollowerList");

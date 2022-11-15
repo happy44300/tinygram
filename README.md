@@ -16,20 +16,37 @@ In particular, the following features were implemented:
 ## Product
 
 This project relies on the services provided by Google Cloud, and as such uses the Google Datastore. Listed below are the different Kinds involved in the structure of TinyGram: 
-* User
-![UserKindPicture](./other/user_kind_picture.png)
+* User\
+![UserKindPicture](./images/user_kind_picture.png)\
+![UserProperties](./images/user_properties.png)\
 
-* FollowerShard
-![FollowerShard](./other/follower_shard_kind_picture.png)
+* FollowerShard \
+![FollowerShard](./images/follower_shard_kind_picture.png)\
+![FollowerProperties](./images/follower_shard_properties.png)\
 
-* Post
-![UserKindPicture](./other/post_kind_picture.png)
+* Post\
+![PostKindPicture](./images/post_kind_picture.png)\
+![PostProperties](./images/post_properties.png)\
 
-* ReceiverShard
-![UserKindPicture](./other/receiver_shard_kind_picture.png)
+* ReceiverShard\
+![ReceiverShardKindPicture](./images/receiver_shard_kind_picture.png)\
+![ReceiverShardProperties](./images/receiver_shard_properties.png)\
 
-* LikerShard
-![UserKindPicture](./other/liker_shard_kind_picture.png)
+* LikerShard\
+![LikerShardKindPicture](./images/liker_shard_kind_picture.png)\
+![LikerProperties](./images/liker_shard_properties.png)\
+
+## Benchmark
+
+We ran benchmarks on TinyGram's ability to scale (i.e. adapt varying numbers of users, inputs, posts, etc...).
+
+Here are the results :
+
+* Amount of time required to post a message when followed by 10, 100, 500 followers (average on 30 posts)
+include results screenshot
+
+* Amount of time required to retrieve 10, 100, 500 recent messages (average on 30 retrievals) 
+include results screenshot
 
 # fast install
 
