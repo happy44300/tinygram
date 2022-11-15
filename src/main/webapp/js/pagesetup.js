@@ -225,7 +225,8 @@ const Timeline = {
                                 url: "_ah/api/tinygram/v1/follow/" + encodeURIComponent(post.owner) + "?access_token=" + encodeURIComponent(User.credential),
                             })
                         }}, "Follow post author"),
-                        m("div",{class: ""},`Likes: ${post.likec} `),
+                        m("div",{class: ""},`Likes: `),
+                        m("div",{id: postid},`${post.likec} `),
                     m("div",`Author: ${post.owner}`))
             ])
         );
