@@ -1,3 +1,36 @@
+# TinyGram
+Bilal Molli & Erwan Boisteau-Desdevises
+
+
+TinyGram is a University Project realized during the first year of the ALMA Master's Degree at Nantes Université.
+
+## Objectives
+
+TinyGram is a simplistic replication of a social media network, made using Google Cloud Services, meant to implement scalable features. 
+In particular, the following features were implemented: 
+- Following a user
+- Posting a picture
+- Liking a picture
+- Retrieving recent posts
+
+## Product
+
+This project relies on the services provided by Google Cloud, and as such uses the Google Datastore. Listed below are the different Kinds involved in the structure of TinyGram: 
+* User
+![UserKindPicture](./other/user_kind_picture.png)
+
+* FollowerShard
+![FollowerShard](./other/follower_shard_kind_picture.png)
+
+* Post
+![UserKindPicture](./other/post_kind_picture.png)
+
+* ReceiverShard
+![UserKindPicture](./other/receiver_shard_kind_picture.png)
+
+* LikerShard
+![UserKindPicture](./other/liker_shard_kind_picture.png)
+
 # fast install
 
 * precondition: you have a GCP project selected with billing activated. 
