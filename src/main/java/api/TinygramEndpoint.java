@@ -102,7 +102,7 @@ public class TinygramEndpoint {
         System.out.println(results);
 
 
-        Long likesCount = Long.valueOf(0);
+        /*Long likesCount = Long.valueOf(0);
 
         for(Entity result: results){
             Long likerShardsAmount = (Long) result.getProperty("likerShardsAmount");
@@ -119,7 +119,7 @@ public class TinygramEndpoint {
             }
 
             result.setProperty("likec", likesCount);
-        }
+        }*/
         
 
         return CollectionResponse.<Entity>builder().setItems(results).setNextPageToken(cursorString).build();
@@ -474,13 +474,13 @@ public class TinygramEndpoint {
 
         for(int i = 0; i < 30; i++) {
             msg = new PostMessage();
-            msg.owner = "erwanbode@gmail.com";
+            msg.owner = userEmail;
             msg.body = "body text" + i;
             msg.pictureUrl = "https://media.giphy.com/media/eePSFNBFv2W9owZ4Sh/giphy.gif";
         
             try {
                 Long start = System.currentTimeMillis();
-                publishPostUnchecked("erwanbode@gmail.com", msg);
+                publishPostUnchecked(userEmail, msg);
                 Long end = System.currentTimeMillis();
 
                 runTimes.add(i, end-start); 
@@ -492,13 +492,29 @@ public class TinygramEndpoint {
         return runTimes;
     }
 
+    private void publishAnyNumberOfDummyPosts(int numberOfDummyPosts){
+        PostMessage msg;
+
+        for(int i = 0; i < numberOfDummyPosts; i++) {
+            msg = new PostMessage();
+            msg.owner = "examplemail@maildomain.com";
+            msg.body = "body text" + i + System.currentTimeMillis();
+            msg.pictureUrl = "https://media.giphy.com/media/eePSFNBFv2W9owZ4Sh/giphy.gif";
+        
+            try {
+                publishPostUnchecked("erwanbode@gmail.com", msg);
+            }catch(Exception e) {
+                e.printStackTrace();
+            }
+        } 
+    }
 
     @ApiMethod(name = "retrieveRecentPosts", httpMethod = HttpMethod.GET)
     public ArrayList<Long> retrieveRecentPosts(@Named("numberOfPostsToRetrieve") int numberOfPostsToRetrieve){
         
         ArrayList<Long> runTimes = new ArrayList<>();
 
-        for(int i = 0; i < 10; i++){
+        for(int i = 0; i < 30; i++){
             Long start = System.currentTimeMillis();
             retrieveAnyNumberOfPosts("", numberOfPostsToRetrieve);
             Long end = System.currentTimeMillis();
