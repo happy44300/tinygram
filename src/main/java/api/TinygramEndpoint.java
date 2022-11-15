@@ -374,7 +374,7 @@ public class TinygramEndpoint {
         }
     }
 
-    @ApiMethod(name = "likePost", httpMethod = HttpMethod.GET)
+    @ApiMethod(name = "likePost", httpMethod = HttpMethod.POST)
 	public Object likePost(User user, @Named("postid") String postid ) throws UnauthorizedException {
         if (user == null) {
 			throw INVALID_CREDENTIALS;
@@ -502,7 +502,7 @@ public class TinygramEndpoint {
             msg.pictureUrl = "https://media.giphy.com/media/eePSFNBFv2W9owZ4Sh/giphy.gif";
         
             try {
-                publishPostUnchecked("erwanbode@gmail.com", msg);
+                publishPostUnchecked("examplemail@maildomain.com", msg);
             }catch(Exception e) {
                 e.printStackTrace();
             }
@@ -514,7 +514,10 @@ public class TinygramEndpoint {
         
         ArrayList<Long> runTimes = new ArrayList<>();
 
+        publishAnyNumberOfDummyPosts(50);
+        
         for(int i = 0; i < 30; i++){
+
             Long start = System.currentTimeMillis();
             retrieveAnyNumberOfPosts("", numberOfPostsToRetrieve);
             Long end = System.currentTimeMillis();
