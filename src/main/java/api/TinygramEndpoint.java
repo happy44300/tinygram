@@ -1,6 +1,7 @@
 package api;
 import com.google.api.server.spi.config.*;
 import com.google.api.server.spi.response.CollectionResponse;
+import com.google.appengine.api.ThreadManager;
 import com.google.appengine.api.datastore.*;
 import com.google.appengine.api.users.User;
 import com.google.api.server.spi.config.ApiMethod.HttpMethod;
@@ -18,6 +19,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 
@@ -37,7 +39,7 @@ public class TinygramEndpoint {
     private static final Random rng = new Random();
 
     private static final int FOLLOWER_SHARD_NUMBER = 2;
-    private static final int LIKER_SHARD_NUMBER = 2;
+    private static final int LIKER_SHARD_NUMBER = 10;
 
     @ApiMethod(name = "retrievePostsFromFollowedSenders", httpMethod = HttpMethod.GET)
     public CollectionResponse<Entity> retrievePostsFromFollowedSenders(User user, @Nullable @Named("next") String cursorString) throws UnauthorizedException {
@@ -215,6 +217,8 @@ public class TinygramEndpoint {
             throw new InvalidParameterException("post body and picture are null");
         }
 
+        
+
         Key postKey = KeyFactory.createKey("Post", Long.MAX_VALUE-(new Date()).getTime()+":"+userEmail);
 		Entity postEntity = new Entity(postKey);
 		postEntity.setProperty("url", post.pictureUrl);
@@ -224,13 +228,19 @@ public class TinygramEndpoint {
         postEntity.setProperty("likerShardsAmount", LIKER_SHARD_NUMBER);
 		postEntity.setProperty("date", new Date());
 
-		System.out.println("Yeah:"+ post);
+        System.out.println("---------------------------------------------------------------------------------");
+        System.out.println("userEmail is: " + userEmail);
+        System.out.println("post.owner is: " + post.owner);
+		System.out.println("post is: " + post);
+        System.out.println("---------------------------------------------------------------------------------");
 
         Key userKey = KeyFactory.createKey("User", userEmail+":user");
         try {
             Entity userEntity = datastore.get(userKey);
 
-            Long numberOfShards = (Long) userEntity.getProperty("FollowerShardAmount");
+            System.out.println("userEntity is: " + userEntity);
+
+            Long numberOfShards = (Long) userEntity.getProperty("followerShardAmount");
 
             System.out.println(userEntity);
             System.out.println(userKey);
@@ -380,9 +390,17 @@ public class TinygramEndpoint {
 			throw INVALID_CREDENTIALS;
 		}
 
+        return likePostUnchecked(user.getEmail(), postid);
+	}
+
+    private Object likePostUnchecked(String userEmail, String postid) throws UnauthorizedException {
+        if (userEmail == null) {
+			throw INVALID_CREDENTIALS;
+		}
+
         Long likes = null;
 
-        System.out.println("user:"+ user.getEmail() +" liked: " + postid);
+        System.out.println("user:"+ userEmail +" liked: " + postid);
 
         Transaction transaction = datastore.beginTransaction();
 
@@ -395,7 +413,7 @@ public class TinygramEndpoint {
                 (CompositeFilterOperator.and(
                     new FilterPredicate("__key__", FilterOperator.LESS_THAN_OR_EQUAL, KeyFactory.createKey(postKey, "LikerShard", ":shard_"+LIKER_SHARD_NUMBER)),
                     new FilterPredicate("__key__", FilterOperator.GREATER_THAN_OR_EQUAL, KeyFactory.createKey(postKey, "LikerShard", ":shard_0")))),
-                new FilterPredicate("shardedLikerList", FilterOperator.EQUAL, user.getEmail())))
+                new FilterPredicate("shardedLikerList", FilterOperator.EQUAL, userEmail)))
             .setKeysOnly();
 
             PreparedQuery preparedQuery = datastore.prepare(query);
@@ -416,7 +434,7 @@ public class TinygramEndpoint {
                 }
 
                 likes = (Long) shardEntity.getProperty("likes") + 1;
-                likers.add(user.getEmail());
+                likers.add(userEmail);
                 shardEntity.setProperty("likes", likes);
                 shardEntity.setProperty("shardedLikerList", likers);
 
@@ -435,7 +453,7 @@ public class TinygramEndpoint {
         }
         
         return likes;
-	}
+    }
 
     
     /**
@@ -528,4 +546,64 @@ public class TinygramEndpoint {
         return runTimes;
     }
 
+
+    @ApiMethod(name = "testMaxLikes", httpMethod = HttpMethod.GET)
+    public AtomicInteger testMaxLikes(){
+        AtomicInteger ai = new AtomicInteger(0);
+        Thread[] threads = new Thread[10000];
+
+        PostMessage pm = new PostMessage();
+        pm.body = "pain";
+        pm.pictureUrl = "https://media.giphy.com/media/ROcSJHrOhhBkc/giphy.gif";
+        pm.owner = "erwanbode@gmail.com";
+        
+        try {
+            
+            Entity post = publishPostUnchecked("erwanbode@gmail.com", pm);
+ 
+            for (int i=0;i<threads.length;i++) {   
+                      
+                threads[i]=ThreadManager.createThreadForCurrentRequest(new Runnable()  {
+                    public void run() {
+
+                        Long start = System.currentTimeMillis();
+
+                        int j = 0;
+                        while(j < 5 && System.currentTimeMillis() - start < 1000) {
+                            try {
+                                likePostUnchecked("thisIsADummyEmailFromThread" + Thread.currentThread() + "AndIteration" + j + "@maildomain.com", post.getKey().toString().substring(6, 45));
+                                ai.getAndIncrement();
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                                System.out.println("------------------------------------------------------------");
+                            }
+                            j++;
+                        }
+
+                    }
+                });
+                
+            }
+
+            for(Thread thread : threads){
+                try {
+                    thread.start();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+
+            threads[0].join(1000);
+            for(int i = 1; i < threads.length; i++){
+                threads[i].join();
+            } 
+
+            return ai;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }    
 }

@@ -43,10 +43,25 @@ We ran benchmarks on TinyGram's ability to scale (i.e. adapt varying numbers of 
 Here are the results :
 
 * Amount of time required to post a message when followed by 10, 100, 500 followers (average on 30 posts)
-include results screenshot
+    - 10 followers : 165 ms
+    - 100 followers : 145 ms
+    - 500 followers : 206 ms
 
-* Amount of time required to retrieve 10, 100, 500 recent messages (average on 30 retrievals) 
-include results screenshot
+* Amount of time required to retrieve 10, 100, 500 recent messages (average on 30 retrievals)
+    - 10 messages : 305 ms
+    - 100 followers : 90 ms
+    - 500 followers : 285 ms
+    - Note : In order for message retrieval to stay reasonably short, post queries do not return the number of likes associated with these posts.
+
+* Maximum number of likes in one second
+    - 51
+
+
+Some of these results are surprising, and further testing could have allowed more accurate ones. Factors that could interfere with getting relevant data include :
+* Different caches
+* Testing methods (directly from the API)
+* etc...
+
 
 # fast install
 

@@ -161,16 +161,17 @@ const PostController = {
 const SettingsBarView = {
     view: function () {
         return m('nav', {class: 'navbar sticky-top navbar-light bg-light'}, [
-            m('div', {class: 'container-fluid'}, [
+            m('div', {class: "container-fluid"}, [
                 m('a', {
                     href: '#',
                     class: "navbar-brand"
                 }, m("img", {
                     src:"static/logo.svg",
-                    width:"230",height:"40"}
+                    width:"220",height:"40"}
                 )),
-                m("div", {class:"navbar-brand"},[
+                m('div', {class: "nav-item"}, [
                     m('div', {
+                        class: "",
                         id: 'g_id_onload',
                         'data-client_id': '477502282441-pqpq69gi50k2tccp2ps7kqs5fjqdc1t9.apps.googleusercontent.com',
                         'data-callback': 'handleCredentialResponse',
@@ -178,9 +179,19 @@ const SettingsBarView = {
                     m('div', {
                         class: 'g_id_signin',
                         'data-type': 'standard'
-                    })
-                ])
-            ]),
+                    }),
+                ]),
+                m('a', {
+                    href: 'https://github.com/happy44300/tinygram',
+                    class: "nav-item me-5",
+                    target: "_blank"
+                }, m("img", {
+                    src:"static/githubicon.png",
+                    width:"40",height:"40"}
+                )),
+            ])
+
+            
         ])
     }
 };
@@ -207,10 +218,10 @@ const Timeline = {
                                 .then(function(result){
                                     if(result != null){
                                         console.log("liked post")
-                                        console.log(document.getElementById(postid).innerHTML);
-                                        let displayedLikes = parseInt(document.getElementById(postid).innerHTML, 10);
-                                        console.log(displayedLikes); 
-                                        document.getElementById(postid).innerHTML = displayedLikes + 1;
+                                        //console.log(document.getElementById(postid).innerHTML);
+                                        //let displayedLikes = parseInt(document.getElementById(postid).innerHTML, 10);
+                                        //console.log(displayedLikes); 
+                                        //document.getElementById(postid).innerHTML = displayedLikes + 1;
                                     }else {
                                         console.log("couldn't like");
                                     }
@@ -225,8 +236,8 @@ const Timeline = {
                                 url: "_ah/api/tinygram/v1/follow/" + encodeURIComponent(post.owner) + "?access_token=" + encodeURIComponent(User.credential),
                             })
                         }}, "Follow post author"),
-                        m("div",{class: ""},`Likes: `),
-                        m("div",{id: postid},`${post.likec} `),
+                        //m("div",{class: ""},`Likes: `),
+                        //m("div",{id: postid},`${post.likec} `),
                     m("div",`Author: ${post.owner}`))
             ])
         );
